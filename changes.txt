@@ -1,0 +1,53 @@
+Main Changes Log
+
+- Known missing features
+* Able to load C3 data. Distortion for reflectance need more tests.
+
+- Revised version in m40522. April 3, ver 0.06
+* Fixed a bug in RGB distortion computation (DT)
+* Editorial improvements, e.g. variable naming (DT)
+* Improved CMakeLists.txt, handle system with older GCC version < 4.7 (DT)
+* Added reflectance distortion reporting, -l (DT)
+
+- Software sharing to Chirtian. March 29, ver 0.05
+* Fix .PLY loading bug under Windows. (DT, MK)
+
+- Software sharing to Chritian. March 22, ver 0.04
+* Remove dependency on PCL library. Use nanoflann to do KNN search. (DT)
+* Write I/O functions/classes for point clouds. (DT)
+* Modify distortion functions for new KNN search. (DT)
+* Able to load C3 data. (DT)
+
+- Software sharing to Christian. March 17, 2017, ver 0.03
+* Add wrapper class for classified attributes, easier to extend to include more attributes in the future. Preparing for C3 data. (DT)
+* Support exporting/importing intrinsic resolutions. (DT)
+* Output normal point cloud for .ply in binary format. (DT)
+* New rgb2yuv function using BT.709 formula provided by Technicolor. (DT)
+* Inspect attributes available by parsing .ply file header. (DT)
+* Coding improvements. (DT)
+
+- Software release on reflector. Feb 10, 2017, ver 0.02
+* RGB distortion integration
+  Algorithm discussions. (MK, PC, RM, DT)
+  Added a command line switch -c to report color distortions. (DT)
+  RGB2YUV conversion performed before evaluation, merged from Rufael's code. (DT)
+  One-pass reporting in Rufael's code, now two-pass reporting implemented. (DT)
+* Windows compiling
+  Improvements on CMakeLists.txt to use Boost library. (MK)
+  Set PCL_NO_PRECOMPILE before including any PCL headers for Windows platform. (MK)
+  Changed index variable type from size_t to long in complying with OpenMP under Windows. (MK)
+  Elapsed time reporting function, using TicToc, platform independent. (RM)
+  Compiling instruction for Windows. (MK)
+* General improvement
+  Called a single function, findMetric, for A->B and B->A metrics with redundant code being cleaned, findMetricB. (DT)
+  Editorial improvemnents. (DT, MK)
+  Crosscheck on Frog dataset. (MK, DT)
+
+- Software release in M39966, Feb 8, 2017, ver 0.01
+* Initial release. (DT)
+
+- Contributor lists:
+  DT: Dong Tian
+  MK: Maja Krivokuca
+  PC: Phil Chou
+  RM: Rufael Mekuria

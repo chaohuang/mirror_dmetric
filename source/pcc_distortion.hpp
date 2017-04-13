@@ -57,7 +57,7 @@ using namespace nanoflann;
 using namespace std;
 using namespace pcc_processing;
 
-#define PCC_QUALITY_VERSION "0.06"
+#define PCC_QUALITY_VERSION "0.09"
 
 namespace pcc_quality {
 
@@ -96,7 +96,7 @@ namespace pcc_quality {
 
   public:
     // point-2-point ( cloud 2 cloud ), benchmark metric
-    float c2c_rms;            //! store symm rms metric
+    float c2c_mse;            //! store symm mse metric
     float c2c_hausdorff;      //! store symm haussdorf
     float c2c_psnr;
     float c2c_hausdorff_psnr; //! store symm haussdorf
@@ -105,7 +105,7 @@ namespace pcc_quality {
     float color_psnr[3];      //! psnr
 
     // point-2-plane ( cloud 2 plane ), proposed metric
-    float c2p_rms;            //! store symm rms metric
+    float c2p_mse;            //! store symm mse metric
     float c2p_hausdorff;      //! store symm haussdorf
     float c2p_psnr;
     float c2p_hausdorff_psnr; //! store symm haussdorf

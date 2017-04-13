@@ -42,10 +42,36 @@
 #include <fstream>
 #include <sstream>
 #include <memory.h>
+#include <sys/stat.h>
+
+#include <algorithm>
+#include <functional>
+#include <cctype>
+#include <locale>
+
 #include "pcc_processing.hpp"
 
 using namespace std;
 using namespace pcc_processing;
+
+// trim from start
+static inline std::string &ltrim(std::string &s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+                                  std::not1(std::ptr_fun<int, int>(std::isspace))));
+  return s;
+}
+
+// trim from end
+static inline std::string &rtrim(std::string &s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+  return s;
+}
+
+// trim from both ends
+static inline std::string &trim(std::string &s) {
+  return ltrim(rtrim(s));
+}
 
 /**!
  * **************************************
@@ -295,6 +321,7 @@ PccPointCloud::checkFile(string fileName)
   in.open(fileName, ifstream::in);
   while ( getline(in, line) && lineNum < 100) // Maximum number of lines of header section: 100
   {
+    line = rtrim( line );
     if (line == "ply")
     {
       bPly = true;
@@ -349,11 +376,11 @@ PccPointCloud::checkFile(string fileName)
           fieldType[fieldNum] = PointFieldTypes::INT16;
           fieldSize += sizeof(short);
         }
-        else if ( str[1] == "uint" ) {
+        else if ( str[1] == "uint" || str[1] == "uint32" ) {
           fieldType[fieldNum] = PointFieldTypes::UINT32;
           fieldSize += sizeof(unsigned int);
         }
-        else if ( str[1] == "int" ) {
+        else if ( str[1] == "int" || str[1] == "int32" ) {
           fieldType[fieldNum] = PointFieldTypes::INT32;
           fieldSize += sizeof(int);
         }
@@ -627,6 +654,13 @@ PccPointCloud::load( string inFile, bool isNormal )
 
   if (inFile == "")
     return 0;
+
+  struct stat bufferExist;
+  if (stat (inFile.c_str(), &bufferExist) != 0)
+  {
+    cout << "File does not exist: " << inFile << endl;
+    return -1;
+  }
 
   // Check file header
   if ( checkFile( inFile ) != 0 )

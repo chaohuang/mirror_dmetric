@@ -7,14 +7,16 @@ import ConfigParser
 
 org = {}
 norm = {}
-pref = {}
+bitstream = {}
+decoded = {}
 log = {}
 gRange = {}
 cRange = {}
-pjRange = {}
 pPSNR = {}
+numa = {}
+numb = {}
 seqSet = []
-calc = '/data/tian/pc_psnr/pcc_quality/test/pc_error_0322'  # Specify the program of the distortion calculator
+calc = '/data3/tian/quality/pcc_quality/test/pc_error'  # Specify the program of the distortion calculator
 
 
 def tree():
@@ -58,14 +60,18 @@ def getSetFromString( str, separator ):
 
 
 def ConfigSectionMap( section ):
+  numa[section] = ''
+  numb[section] = ''
   options = Config.options( section )
   for option in options:
     if option == "org":
       org[section] = Config.get( section, option )
     elif option == "norm":
       norm[section] = Config.get( section, option )
-    elif option == "pref":
-      pref[section] = Config.get( section, option )
+    elif option == "bitstream":
+      bitstream[section] = Config.get( section, option )
+    elif option == "decoded":
+      decoded[section] = Config.get( section, option )
     elif option == "log":
       log[section] = Config.get( section, option )
     elif option == "grange":
@@ -74,11 +80,12 @@ def ConfigSectionMap( section ):
     elif option == "crange":
       strtmp = Config.get( section, option )
       cRange[section] = map(int, getSetFromString( strtmp, ',' ) )
-    elif option == "pjrange":
-      strtmp = Config.get( section, option )
-      pjRange[section] = getSetFromString( strtmp, ',' )
     elif option == "ppsnr":
       pPSNR[section] = float( Config.get( section, option ) )
+    elif option == "numa":
+      numa[section] = int( Config.get( section, option ) )
+    elif option == "numb":
+      numb[section] = int( Config.get( section, option ) )
 
 
 def main(argv):
@@ -87,6 +94,7 @@ def main(argv):
   ##########################################
   runCmd = 0                      # Set to 1 to run evaluation. Set to 0 to put the Excel sheet ready output and no evaluation would be actually called
   myIni = ""
+  seqSetSpecial = ""
 
   # Update the variables from command line
   try:
@@ -99,7 +107,7 @@ def main(argv):
       usage()
       sys.exit()
     elif opt in ("-d", "--data"):
-      seqSet = [arg]
+      seqSetSpecial = [arg]
     elif opt in ("-r", "--run"):
       runCmd = 1
     elif opt in ("-c", "--config"):
@@ -112,7 +120,13 @@ def main(argv):
   # Load configurations
   Config.read(myIni)
   seqSet = Config.sections()
-  print("sections: %s" % seqSet)
+  # print("sections: %s" % seqSet)
+
+  if seqSetSpecial != "":
+    seqSet = seqSetSpecial
+
+  seqSet = sorted( seqSet )
+
   for seq in seqSet:
     ConfigSectionMap( seq )
 
@@ -121,16 +135,35 @@ def main(argv):
     data = tree()
     # Do evaluations
     for g in gRange[seq][0:1]:
-      logfile = '%s_intrinsic.txt' % ( log[seq] )
-      cmd = 'date; %s -a %s > %s; date' % (calc, org[seq], logfile)
-      if runCmd:
-        print('%s' % (cmd) )
-        os.system(cmd)
-      m1, m2 = getResults( 'Minimum and maximum NN distances', logfile )
-      if runCmd:
-        print( '%s -> %f, %f' % (logfile, m1, m2) )
-      data[g]['min'] = m1
-      data[g]['max'] = m2
+      if ( numa[seq] == '' ):
+        logfile = '%s_intrinsic.txt' % ( log[seq] )
+        cmd = 'date; %s -a %s > %s; date' % (calc, org[seq], logfile)
+        if runCmd:
+          print('%s' % (cmd) )
+          os.system(cmd)
+        m1, m2 = getResults( 'Minimum and maximum NN distances', logfile )
+        if runCmd:
+          print( '%s -> %f, %f' % (logfile, m1, m2) )
+        data[g]['min'] = m1
+        data[g]['max'] = m2
+      else:
+        dataLocal1 = []
+        dataLocal2 = []
+        for frm in range(numa[seq], numb[seq]+1):
+          logfile = '%s_%d_intrinsic.txt' % ( log[seq], frm )
+          fname = '%s%04d.ply' % (org[seq], frm)
+          cmd = 'date; %s -a %s > %s; date' % (calc, fname, logfile)
+          if runCmd:
+            print('%s' % (cmd) )
+            os.system(cmd)
+          m1, m2 = getResults( 'Minimum and maximum NN distances', logfile )
+          if runCmd:
+            print( '%s -> %f, %f' % (logfile, m1, m2) )
+          dataLocal1.append( m1 )
+          dataLocal2.append( m2 )
+
+        data[g]['min'] = max(dataLocal1)
+        data[g]['max'] = max(dataLocal2)
 
     # Do reporting
     for g in gRange[seq][0:1]:

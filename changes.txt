@@ -3,6 +3,20 @@ Main Changes Log
 - Known missing features
 * Able to load C3 data. Distortion for reflectance need more tests.
 
+- Shared with Christian. April 7, ver 0.09
+* Fixed RMS to MSE for D1/D2. (DT)
+* Fixed PSNR formula. (DT)
+* Updated scripts using 1023 for 10-bit contents. (DT)
+* Disable computing/outputting intrinsic resolution when -r provided. (DT)
+
+- Shared with Christian. April 6, ver 0.08
+* Fixed a bug allocating memory when scaling normals. Crash with 8i sequence. (DT)
+
+- Shared with Christian. April 5, ver 0.07
+* Fixed a bug when loading .ply in DOS ascii format, e.g. Ford (DT)
+* Fixed a bug in reflectance distortion. (DT)
+* Added handling nan normal on a point with D2. (DT)
+
 - Revised version in m40522. April 3, ver 0.06
 * Fixed a bug in RGB distortion computation (DT)
 * Editorial improvements, e.g. variable naming (DT)

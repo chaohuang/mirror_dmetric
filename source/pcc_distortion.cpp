@@ -126,8 +126,9 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
  *   Convert the MSE error to PSNR numbers
  * \parameters
  *   @param cloudA:  the original point cloud
- *   @param dist: the distortion
+ *   @param dist2: the sqr of the distortion
  *   @param p: the peak value for conversion
+ *   @param factor: default 1.0. For geometry errors value 3.0 should be provided
  * \return
  *   psnr value
  * \note
@@ -136,10 +137,10 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
  *   Dong Tian, MERL
  */
 float
-getPSNR(float dist, float p)
+getPSNR(float dist2, float p, float factor = 1.0)
 {
   float max_energy = p * p;
-  float psnr = 10 * log10( max_energy / (dist*dist) );
+  float psnr = 10 * log10( (factor * max_energy) / dist2 );
 
   return psnr;
 }
@@ -168,7 +169,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
 #endif
 
   cloudNormalsB.normal.init(cloudB.size);
-  vector< vector<int> > vecMap( cloudNormalsA.size );
+  vector< vector<int> > vecMap( cloudB.size );
 
   for (long i = 0; i < cloudB.size; i++)
   {
@@ -290,15 +291,15 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 #if PRINT_TIMING
   clock_t t2 = clock();
 #endif
-  double max_dist_b_c2p = std::numeric_limits<double>::min();
-  double rms_dist_b_c2p = 0;
   double max_dist_b_c2c = std::numeric_limits<double>::min();
-  double rms_dist_b_c2c = 0;
-  double mse_reflectance = 0;
+  double sse_dist_b_c2c = 0;
+  double max_dist_b_c2p = std::numeric_limits<double>::min();
+  double sse_dist_b_c2p = 0;
+  double sse_reflectance = 0;
   long num = 0;
 
-  double mse_color[3];
-  mse_color[0] = mse_color[1] = mse_color[2] = 0.0;
+  double sse_color[3];
+  sse_color[0] = sse_color[1] = sse_color[2] = 0.0;
 
   typedef vector< vector<double> > my_vector_of_vectors_t;
   typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
@@ -329,18 +330,19 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     errVector[2] = cloudA.xyz.p[i][2] - cloudB.xyz.p[j][2];
 
     // Compute point-to-point, which should be equal to sqrt( sqrDist[0] )
-    double distProj_c2c = sqrt( errVector[0] * errVector[0] +
-                               errVector[1] * errVector[1] +
-                               errVector[2] * errVector[2] );
+    double distProj_c2c = errVector[0] * errVector[0] + errVector[1] * errVector[1] + errVector[2] * errVector[2];
 
     // Compute point-to-plane
     // Normals in B will be used for point-to-plane
     double distProj = 0.0;
     if (!cPar.c2c_only && cloudNormalsB.bNormal)
     {
-      distProj = fabs( errVector[0] * cloudNormalsB.normal.n[j][0] +
-                       errVector[1] * cloudNormalsB.normal.n[j][1] +
-                       errVector[2] * cloudNormalsB.normal.n[j][2] );
+      if ( !isnan( cloudNormalsB.normal.n[j][0] ) && !isnan( cloudNormalsB.normal.n[j][1] ) && !isnan( cloudNormalsB.normal.n[j][2] ) )
+        distProj = ( ( errVector[0] * cloudNormalsB.normal.n[j][0] ) * ( errVector[0] * cloudNormalsB.normal.n[j][0] ) +
+                     ( errVector[1] * cloudNormalsB.normal.n[j][1] ) * ( errVector[1] * cloudNormalsB.normal.n[j][1] ) +
+                     ( errVector[2] * cloudNormalsB.normal.n[j][2] ) * ( errVector[2] * cloudNormalsB.normal.n[j][2] )   );
+      else
+        distProj = errVector[0] * errVector[0] + errVector[1] * errVector[1] + errVector[2] * errVector[2];
     }
 
     double distColor[3];
@@ -369,45 +371,45 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
     num++;
     // mean square distance
-    rms_dist_b_c2c += distProj_c2c;
+    sse_dist_b_c2c += distProj_c2c;
     if (distProj_c2c > max_dist_b_c2c)
       max_dist_b_c2c = distProj_c2c;
     if (!cPar.c2c_only)
     {
-      rms_dist_b_c2p += distProj;
+      sse_dist_b_c2p += distProj;
       if (distProj > max_dist_b_c2p)
         max_dist_b_c2p = distProj;
     }
     if (cPar.bColor)
     {
-      mse_color[0] += distColor[0];
-      mse_color[1] += distColor[1];
-      mse_color[2] += distColor[2];
+      sse_color[0] += distColor[0];
+      sse_color[1] += distColor[1];
+      sse_color[2] += distColor[2];
     }
     if (cPar.bLidar && cloudA.bLidar && cloudB.bLidar)
     {
-      mse_reflectance += distReflectance;
+      sse_reflectance += distReflectance;
     }
 
     myMutex.unlock();
   }
 
-  metric.c2p_rms = float( rms_dist_b_c2p / num );
-  metric.c2c_rms = float( rms_dist_b_c2c / num );
+  metric.c2p_mse = float( sse_dist_b_c2p / num );
+  metric.c2c_mse = float( sse_dist_b_c2c / num );
   metric.c2p_hausdorff = float( max_dist_b_c2p );
   metric.c2c_hausdorff = float( max_dist_b_c2c );
 
   // from distance to PSNR. cloudA always the original
-  metric.c2c_psnr = getPSNR( metric.c2c_rms, metric.pPSNR );
-  metric.c2p_psnr = getPSNR( metric.c2p_rms, metric.pPSNR );
-  metric.c2c_hausdorff_psnr = getPSNR( metric.c2c_hausdorff, metric.pPSNR );
-  metric.c2p_hausdorff_psnr = getPSNR( metric.c2p_hausdorff, metric.pPSNR );
+  metric.c2c_psnr = getPSNR( metric.c2c_mse, metric.pPSNR, 3 );
+  metric.c2p_psnr = getPSNR( metric.c2p_mse, metric.pPSNR, 3 );
+  metric.c2c_hausdorff_psnr = getPSNR( metric.c2c_hausdorff, metric.pPSNR, 3 );
+  metric.c2p_hausdorff_psnr = getPSNR( metric.c2p_hausdorff, metric.pPSNR, 3 );
 
   if (cPar.bColor)
   {
-    metric.color_mse[0] = float( sqrt( mse_color[0] ) / num );
-    metric.color_mse[1] = float( sqrt( mse_color[1] ) / num );
-    metric.color_mse[2] = float( sqrt( mse_color[2] ) / num );
+    metric.color_mse[0] = float( sse_color[0] / num );
+    metric.color_mse[1] = float( sse_color[1] / num );
+    metric.color_mse[2] = float( sse_color[2] / num );
 
     metric.color_psnr[0] = getPSNR( metric.color_mse[0], 1.0 );
     metric.color_psnr[1] = getPSNR( metric.color_mse[1], 1.0 );
@@ -416,8 +418,8 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   if (cPar.bLidar)
   {
-    metric.reflectance_mse = float( sqrt( mse_reflectance ) / num );
-    metric.reflectance_psnr = getPSNR( float( mse_reflectance ), float( std::numeric_limits<unsigned short>::max() ) );
+    metric.reflectance_mse = float( sse_reflectance / num );
+    metric.reflectance_psnr = getPSNR( float( metric.reflectance_mse ), float( std::numeric_limits<unsigned short>::max() ) );
   }
 
 #if PRINT_TIMING
@@ -463,8 +465,8 @@ commandPar::commandPar()
 
 qMetric::qMetric()
 {
-  c2c_rms = 0; c2c_hausdorff = 0;
-  c2p_rms = 0; c2p_hausdorff = 0;
+  c2c_mse = 0; c2c_hausdorff = 0;
+  c2p_mse = 0; c2p_hausdorff = 0;
 
   color_mse[0] = color_mse[1] = color_mse[2] = 0.0;
   color_psnr[0] = color_psnr[1] = color_psnr[2] = 0.0;
@@ -492,17 +494,20 @@ qMetric::qMetric()
 void
 pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, commandPar &cPar, qMetric &qual_metric)
 {
-  double minDist;
-  double maxDist;
   float pPSNR;
-  findNNdistances(cloudA, minDist, maxDist);
-  pPSNR = float( maxDist );
-  cout << "Minimum and maximum NN distances (intrinsic resolutions): " << minDist << ", " << maxDist << endl;
 
   if (cPar.resolution != 0.0)
   {
     cout << "Imported intrinsic resoluiton: " << cPar.resolution << endl;
     pPSNR = cPar.resolution;
+  }
+  else                          // Compute the peak value on the fly
+  {
+    double minDist;
+    double maxDist;
+    findNNdistances(cloudA, minDist, maxDist);
+    pPSNR = float( maxDist );
+    cout << "Minimum and maximum NN distances (intrinsic resolutions): " << minDist << ", " << maxDist << endl;
   }
 
   cout << "Peak distance for PSNR: " << pPSNR << endl;
@@ -533,12 +538,12 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
   metricA.pPSNR = pPSNR;
   findMetric( cloudA, cloudB, cPar, cloudNormalsB, metricA );
 
-  cout << "   rms1      (p2point): " << metricA.c2c_rms << endl;
-  cout << "   rms1,PSNR (p2point): " << metricA.c2c_psnr << endl;
+  cout << "   mse1      (p2point): " << metricA.c2c_mse << endl;
+  cout << "   mse1,PSNR (p2point): " << metricA.c2c_psnr << endl;
   if (!cPar.c2c_only)
   {
-    cout << "   rms1      (p2plane): " << metricA.c2p_rms << endl;
-    cout << "   rms1,PSNR (p2plane): " << metricA.c2p_psnr << endl;
+    cout << "   mse1      (p2plane): " << metricA.c2p_mse << endl;
+    cout << "   mse1,PSNR (p2plane): " << metricA.c2p_psnr << endl;
   }
   if ( cPar.hausdorff )
   {
@@ -573,12 +578,12 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     metricB.pPSNR = pPSNR;
     findMetric( cloudB, cloudA, cPar, cloudNormalsA, metricB );
 
-    cout << "   rms2      (p2point): " << metricB.c2c_rms << endl;
-    cout << "   rms2,PSNR (p2point): " << metricB.c2c_psnr << endl;
+    cout << "   mse2      (p2point): " << metricB.c2c_mse << endl;
+    cout << "   mse2,PSNR (p2point): " << metricB.c2c_psnr << endl;
     if (!cPar.c2c_only)
     {
-      cout << "   rms2      (p2plane): " << metricB.c2p_rms << endl;
-      cout << "   rms2,PSNR (p2plane): " << metricB.c2p_psnr << endl;
+      cout << "   mse2      (p2plane): " << metricB.c2p_mse << endl;
+      cout << "   mse2,PSNR (p2plane): " << metricB.c2p_psnr << endl;
     }
     if ( cPar.hausdorff )
     {
@@ -606,8 +611,8 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     }
 
     // Derive the final symmetric metric
-    qual_metric.c2c_rms = max( metricA.c2c_rms, metricB.c2c_rms );
-    qual_metric.c2p_rms = max( metricA.c2p_rms, metricB.c2p_rms );
+    qual_metric.c2c_mse = max( metricA.c2c_mse, metricB.c2c_mse );
+    qual_metric.c2p_mse = max( metricA.c2p_mse, metricB.c2p_mse );
     qual_metric.c2c_psnr = min( metricA.c2c_psnr, metricB.c2c_psnr );
     qual_metric.c2p_psnr = min( metricA.c2p_psnr, metricB.c2p_psnr );
 
@@ -633,12 +638,12 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     }
 
     cout << "3. Final (symmetric).\n";
-    cout << "   rmsF      (p2point): " << qual_metric.c2c_rms << endl;
-    cout << "   rmsF,PSNR (p2point): " << qual_metric.c2c_psnr << endl;
+    cout << "   mseF      (p2point): " << qual_metric.c2c_mse << endl;
+    cout << "   mseF,PSNR (p2point): " << qual_metric.c2c_psnr << endl;
     if (!cPar.c2c_only)
     {
-      cout << "   rmsF      (p2plane): " << qual_metric.c2p_rms << endl;
-      cout << "   rmsF,PSNR (p2plane): " << qual_metric.c2p_psnr << endl;
+      cout << "   mseF      (p2plane): " << qual_metric.c2p_mse << endl;
+      cout << "   mseF,PSNR (p2plane): " << qual_metric.c2p_psnr << endl;
     }
     if ( cPar.hausdorff )
     {

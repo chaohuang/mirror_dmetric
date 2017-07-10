@@ -338,9 +338,12 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     if (!cPar.c2c_only && cloudNormalsB.bNormal)
     {
       if ( !isnan( cloudNormalsB.normal.n[j][0] ) && !isnan( cloudNormalsB.normal.n[j][1] ) && !isnan( cloudNormalsB.normal.n[j][2] ) )
-        distProj = ( ( errVector[0] * cloudNormalsB.normal.n[j][0] ) * ( errVector[0] * cloudNormalsB.normal.n[j][0] ) +
-                     ( errVector[1] * cloudNormalsB.normal.n[j][1] ) * ( errVector[1] * cloudNormalsB.normal.n[j][1] ) +
-                     ( errVector[2] * cloudNormalsB.normal.n[j][2] ) * ( errVector[2] * cloudNormalsB.normal.n[j][2] )   );
+      {
+        distProj = ( errVector[0] * cloudNormalsB.normal.n[j][0] +
+                     errVector[1] * cloudNormalsB.normal.n[j][1] +
+                     errVector[2] * cloudNormalsB.normal.n[j][2] );
+        distProj *= distProj;  // power 2 for MSE
+      }
       else
         distProj = errVector[0] * errVector[0] + errVector[1] * errVector[1] + errVector[2] * errVector[2];
     }

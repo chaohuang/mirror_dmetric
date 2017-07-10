@@ -3,6 +3,9 @@ Main Changes Log
 - Known missing features
 * Able to load C3 data. Distortion for reflectance need more tests.
 
+- Under improvements
+* Fixed a bug in computing MSE for D2. (ON)
+
 - Shared with Christian. April 7, ver 0.09
 * Fixed RMS to MSE for D1/D2. (DT)
 * Fixed PSNR formula. (DT)
@@ -65,3 +68,4 @@ Main Changes Log
   MK: Maja Krivokuca
   PC: Phil Chou
   RM: Rufael Mekuria
+  ON: Ohji Nakagami

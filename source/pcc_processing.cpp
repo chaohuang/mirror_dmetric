@@ -769,9 +769,9 @@ PccPointCloud::load( string inFile, bool isNormal )
   else                          // load normal
   {
     // Make sure (x,y,z) available and determine the float type
-    iPos[0] = checkField( inFile, "nx", "float", "float64", "double" );
-    iPos[1] = checkField( inFile, "ny", "float", "float64", "double" );
-    iPos[2] = checkField( inFile, "nz", "float", "float64", "double" );
+    iPos[0] = checkField( inFile, "nx", "float", "float32", "float64", "double" );
+    iPos[1] = checkField( inFile, "ny", "float", "float32", "float64", "double" );
+    iPos[2] = checkField( inFile, "nz", "float", "float32", "float64", "double" );
     if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
       return -1;
     normal.init(size, iPos[0], iPos[1], iPos[2]);

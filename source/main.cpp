@@ -147,7 +147,7 @@ void printCommand( commandPar &cPar )
 int main (int argc, char *argv[])
 {
   // Print the version information
-  cout << "PCC quality measurer software, version " << PCC_QUALITY_VERSION << endl << endl;
+  cout << "PCC quality measurement software, version " << PCC_QUALITY_VERSION << endl << endl;
 
   commandPar cPar;
   if ( parseCommand( argc, argv, cPar ) == 0 )
@@ -170,7 +170,7 @@ int main (int argc, char *argv[])
   {
     if (inNormal1.load(cPar.normIn, true))
     {
-      cout << "Error reading reference point cloud:" << cPar.normIn << endl;
+      cout << "Error reading normal reference point cloud:" << cPar.normIn << endl;
       return -1;
     }
     cout << "Reading normal 1 done." << endl;

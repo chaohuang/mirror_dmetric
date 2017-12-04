@@ -51,6 +51,10 @@
 
 #include "pcc_processing.hpp"
 
+#if _WIN32
+#define stat64 _stat64
+#endif
+
 using namespace std;
 using namespace pcc_processing;
 
@@ -408,8 +412,10 @@ PccPointCloud::checkFile(string fileName)
 
     lineNum++;
   }
-
+#ifndef _WIN32
   dataPos = in.tellg(); // Only to be used under Linux. @DT
+#endif
+
   in.close();
 
   if (bPly && fileFormat >= 0 && fieldNum > 0 && size > 0 && bEnd)
@@ -596,6 +602,7 @@ PccPointCloud::seekAscii(ifstream &in)
   bool bFound = false;
   while (!bFound && lineNum < 1000 && getline(in, line))
   {
+    line = rtrim(line);
     if (line == "end_header")
       bFound = true;
   }
@@ -610,7 +617,7 @@ PccPointCloud::seekBinary(ifstream &in)
   // Move the pointer to the beginning of the data
   // in.seekg( dataPos );
   char buf[200];
-  char mark[] = "end_header\n";
+  char mark[] = "end_header";
   int  markLen = sizeof(mark);
   int posFile = 0;
   int posBuf = 0;
@@ -624,9 +631,20 @@ PccPointCloud::seekBinary(ifstream &in)
       buf[markLen - 1] = 0;
     }
     else
+    {
       posBuf++;
+    }
     posFile++;
   }
+  // Move pointer to after end of line for this line
+  buf[0] = 0;
+  buf[1] = 0;
+  while (strcmp(buf, "\n") != 0 && posFile < 9000)
+  {
+    in.read(&buf[0], 1);
+    posFile++;
+  }
+
   if (posFile >= 9000)
     return -1;
   return 0;
@@ -655,8 +673,8 @@ PccPointCloud::load( string inFile, bool isNormal )
   if (inFile == "")
     return 0;
 
-  struct stat bufferExist;
-  if (stat (inFile.c_str(), &bufferExist) != 0)
+  struct stat64 bufferExist;
+  if (stat64(inFile.c_str(), &bufferExist) != 0)
   {
     cout << "File does not exist: " << inFile << endl;
     return -1;

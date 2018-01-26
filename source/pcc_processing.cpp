@@ -48,6 +48,7 @@
 #include <functional>
 #include <cctype>
 #include <locale>
+#include <map>
 
 #include "pcc_processing.hpp"
 
@@ -657,6 +658,7 @@ PccPointCloud::seekBinary(ifstream &in)
  * \param[in]
  *   inFile: File name of the input point cloud
  *   isNormal: true to import normals. false to load non-normal data
+ *   dropDuplicates: 0 (detect only), 1 (drop), 2 (average)
  *
  * \return 0, if succeed
  *         non-zero, if failed
@@ -664,7 +666,11 @@ PccPointCloud::seekBinary(ifstream &in)
  *  Dong Tian <tian@merl.com>
  */
 int
+#if DUPLICATEHANDLING
+PccPointCloud::load( string inFile, bool isNormal, int dropDuplicates )
+#else
 PccPointCloud::load( string inFile, bool isNormal )
+#endif
 {
   int ret = 0;
 
@@ -705,8 +711,11 @@ PccPointCloud::load( string inFile, bool isNormal )
       bRgb = true;
     }
 
-    // Make sure (lidar) available and determine the float type
+    // Make sure (lidar) available and determine the uint16 type
     iPos[0] = checkField( inFile, "reflectance", "uint16" );
+    if ( iPos[0] < 0 )
+      iPos[0] = checkField( inFile, "refc", "uint16" );
+
     if ( iPos[0] >= 0 )
     {
       lidar.init(size, iPos[0]);
@@ -745,7 +754,22 @@ PccPointCloud::load( string inFile, bool isNormal )
 #endif
     }
 
+#if DUPLICATEHANDLING
+    int duplicatesFound = 0;
+    long int i = 0; // position at which we insert the point.
+    struct dupAvg
+    {
+      int idx; // unique-geometry point index.
+      int n;   // how many points we've seen with this geometry.
+      long cattr[3]; // sum colors.
+      long lattr; // sum lidar.
+    };
+    std::map<std::vector<double>, struct dupAvg> coordsSeen; // x,y,z coords already seen, map to index and n.
+    std::map<std::vector<double>, struct dupAvg>::iterator seen;
+    for (long int inputScan = 0; inputScan < size; inputScan++, i++)
+#else
     for (long int i = 0; i < size; i++)
+#endif
     {
       if ( loadLine( in ) < 0 )   // Load the data into line memory
       {
@@ -757,9 +781,100 @@ PccPointCloud::load( string inFile, bool isNormal )
         rgb.loadPoints( this, i );
       if (bLidar)
         lidar.loadPoints( this, i );
+
+#if DUPLICATEHANDLING
+      if ((seen = coordsSeen.find(xyz.p[i])) != coordsSeen.end())
+      {
+        duplicatesFound++;
+        if (dropDuplicates == 2)
+        {
+          // info for later average.
+          seen->second.n++;
+          if (bRgb)
+          {
+            seen->second.cattr[0] += rgb.c[i][0];
+            seen->second.cattr[1] += rgb.c[i][1];
+            seen->second.cattr[2] += rgb.c[i][2];
+          }
+          if (bLidar)
+          {
+            seen->second.lattr += lidar.reflectance[i];
+          }
+        }
+        if (dropDuplicates != 0)
+        {
+          // overwrite this last position.
+          i--; // loop will increment.
+          continue;
+        }
+      }
+      else
+      {
+        struct dupAvg avg;
+        avg.n = 1;
+        avg.idx = i;
+        if (bRgb)
+        {
+          avg.cattr[0] = rgb.c[i][0];
+          avg.cattr[1] = rgb.c[i][1];
+          avg.cattr[2] = rgb.c[i][2];
+        }
+        if (bLidar)
+        {
+          avg.lattr = lidar.reflectance[i];
+        }
+        coordsSeen.insert(std::pair<std::vector<double>, struct dupAvg>(xyz.p[i], avg));
+      }
+#endif
     }
 
     in.close();
+
+#if DUPLICATEHANDLING
+    if (duplicatesFound > 0)
+    {
+      switch (dropDuplicates)
+      {
+      case 0:
+        printf("WARNING: %d points with same coordinates found\n",
+               duplicatesFound);
+        break;
+      case 1:
+        printf("WARNING: %d points with same coordinates found and dropped\n",
+               duplicatesFound);
+        break;
+      case 2:
+        // perform averaging.
+        for (auto const &scan: coordsSeen)
+        {
+          auto const &avg = scan.second;
+          if (bRgb)
+          {
+            rgb.c[avg.idx][0] = avg.cattr[0]/avg.n;
+            rgb.c[avg.idx][1] = avg.cattr[1]/avg.n;
+            rgb.c[avg.idx][2] = avg.cattr[2]/avg.n;
+          }
+          if (bLidar)
+          {
+            lidar.reflectance[avg.idx] = avg.lattr/avg.n;
+          }
+        }
+        printf("WARNING: %d points with same coordinates found and averaged\n",
+               duplicatesFound);
+      }
+
+      if (dropDuplicates != 0)
+      {
+        // only unique points have been read, resize our cloud.
+        xyz.init(size-duplicatesFound, -1, -1, -1);
+        if (bRgb)
+          rgb.init(size-duplicatesFound, -1, -1, -1);
+        if (bLidar)
+          lidar.init(size-duplicatesFound, -1);
+        size -= duplicatesFound;
+      }
+    }
+#endif
 
 #if 1
     {

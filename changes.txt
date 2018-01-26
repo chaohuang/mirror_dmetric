@@ -3,6 +3,10 @@ Main Changes Log
 - Known missing features
 * Able to load C3 data. Distortion for reflectance need more tests.
 
+- Changes from MPEG 121 meeting, January 26, 2018, ver 0.11
+* Duplicated point handling. (Gordon Clare)
+* Allow "refc" as field name for reflectance. (David Flynn)
+
 - Under improvements
 * Fixed a bug in computing MSE for D2. (ON)
 

@@ -46,6 +46,8 @@
 #include <vector>
 #include <mutex>
 
+#define DUPLICATEHANDLING 1
+
 using namespace std;
 
 namespace pcc_processing {
@@ -158,7 +160,11 @@ namespace pcc_processing {
 
     PccPointCloud();
     ~PccPointCloud();
+#if DUPLICATEHANDLING
+    int load( string inFile, bool isNormal = false, int dropDuplicates = 0 );
+#else
     int load( string inFile, bool isNormal = false );
+#endif
   };
 
 };

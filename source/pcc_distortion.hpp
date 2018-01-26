@@ -57,7 +57,7 @@ using namespace nanoflann;
 using namespace std;
 using namespace pcc_processing;
 
-#define PCC_QUALITY_VERSION "0.10"
+#define PCC_QUALITY_VERSION "0.11"
 
 namespace pcc_quality {
 
@@ -84,6 +84,9 @@ namespace pcc_quality {
     bool   bLidar;            //! report reflectance as well
 
     float  resolution;        //! intrinsic resolution, imported. for geometric distortion
+#if DUPLICATEHANDLING
+    int   dropDuplicates;   //! 0(detect) 1(drop) 2(average) subsequent points with same geo coordinates
+#endif
 
     commandPar();
   };

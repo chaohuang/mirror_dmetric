@@ -70,6 +70,9 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
       ("color,c", bool_switch(&cPar.bColor)->default_value(false), "Check color distortion as well")
       ("lidar,l", bool_switch(&cPar.bLidar)->default_value(false), "Check lidar reflectance as well")
       ("resolution,r", value(&cPar.resolution)->default_value(0), "Specify the intrinsic resolution")
+#if DUPLICATEHANDLING
+      ("dropdups", value(&cPar.dropDuplicates)->default_value(0), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
+#endif
       ;
 
     // positional_options_description p;
@@ -178,7 +181,11 @@ int main (int argc, char *argv[])
 
   if (cPar.file2 != "")
   {
+#if DUPLICATEHANDLING
+    if (inCloud2.load(cPar.file2, false, cPar.dropDuplicates))
+#else
     if (inCloud2.load(cPar.file2))
+#endif
     {
       cout << "Error reading the second point cloud: " << cPar.file2 << endl;
       return -1;

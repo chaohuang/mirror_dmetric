@@ -43,6 +43,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <limits.h>
 
 #include "pcc_processing.hpp"
 #include "pcc_distortion.hpp"
@@ -456,6 +457,9 @@ commandPar::commandPar()
   bLidar = false;
 
   resolution = 0.0;
+#if DUPLICATEHANDLING
+  dropDuplicates = 0;
+#endif
 }
 
 /**!
@@ -619,9 +623,9 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     qual_metric.c2c_psnr = min( metricA.c2c_psnr, metricB.c2c_psnr );
     qual_metric.c2p_psnr = min( metricA.c2p_psnr, metricB.c2p_psnr );
 
-    qual_metric.c2c_hausdorff = max( metricA.c2c_hausdorff, metricB.c2c_hausdorff	);
+    qual_metric.c2c_hausdorff = max( metricA.c2c_hausdorff, metricB.c2c_hausdorff  );
     qual_metric.c2p_hausdorff = max( metricA.c2p_hausdorff, metricB.c2p_hausdorff );
-    qual_metric.c2c_hausdorff_psnr = min( metricA.c2c_hausdorff_psnr, metricB.c2c_hausdorff_psnr	);
+    qual_metric.c2c_hausdorff_psnr = min( metricA.c2c_hausdorff_psnr, metricB.c2c_hausdorff_psnr );
     qual_metric.c2p_hausdorff_psnr = min( metricA.c2p_hausdorff_psnr, metricB.c2p_hausdorff_psnr );
 
     if ( cPar.bColor )

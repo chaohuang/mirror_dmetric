@@ -270,6 +270,10 @@ LidarSet::loadPoints( PccPointCloud *pPcc, long int idx )
   {
     reflectance[ idx ] = *(unsigned short*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[0] ]);
   }
+  else if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::UINT8 )
+  {
+    reflectance[ idx ] = *(unsigned char*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[0] ]);
+  }
   else
   {
     cerr << "Error! Wrong reflectance data type: " << pPcc->fieldType[ idxInLine[0] ] << endl;
@@ -719,10 +723,10 @@ PccPointCloud::load( string inFile, bool isNormal )
       bRgb = true;
     }
 
-    // Make sure (lidar) available and determine the uint16 type
-    iPos[0] = checkField( inFile, "reflectance", "uint16" );
+    // Make sure (lidar) available and determine the integer type
+    iPos[0] = checkField( inFile, "reflectance", "uint16", "uint8" );
     if ( iPos[0] < 0 )
-      iPos[0] = checkField( inFile, "refc", "uint16" );
+      iPos[0] = checkField( inFile, "refc", "uint16", "uint8" );
 
     if ( iPos[0] >= 0 )
     {

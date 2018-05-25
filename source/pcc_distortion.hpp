@@ -57,7 +57,7 @@ using namespace nanoflann;
 using namespace std;
 using namespace pcc_processing;
 
-#define PCC_QUALITY_VERSION "0.11"
+#define PCC_QUALITY_VERSION "0.12"
 
 namespace pcc_quality {
 
@@ -86,6 +86,9 @@ namespace pcc_quality {
     float  resolution;        //! intrinsic resolution, imported. for geometric distortion
 #if DUPLICATEHANDLING
     int   dropDuplicates;   //! 0(detect) 1(drop) 2(average) subsequent points with same geo coordinates
+#endif
+#if DUPLICATECOLORS
+    int   neighborsProc;   //! 0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance
 #endif
 
     commandPar();

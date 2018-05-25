@@ -1,7 +1,8 @@
 Main Changes Log
 
-- Known missing features
-* Able to load C3 data. Distortion for reflectance need more tests.
+- Changes from MPEG 122 meeting, May 25, 2018, ver 0.12
+* Handle RGB color from duplicated point. (Chevet Jean-Claude and Llach Joan)
+  Ref: m42759
 
 - Changes from MPEG 121 meeting, January 26, 2018, ver 0.11
 * Duplicated point handling. (Gordon Clare)

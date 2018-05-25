@@ -73,6 +73,9 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
 #if DUPLICATEHANDLING
       ("dropdups", value(&cPar.dropDuplicates)->default_value(0), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
 #endif
+#if DUPLICATECOLORS
+      ("neighborsProc", value(&cPar.neighborsProc)->default_value(0), "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance")
+#endif
       ;
 
     // positional_options_description p;
@@ -162,7 +165,15 @@ int main (int argc, char *argv[])
   PccPointCloud inCloud2;
   PccPointCloud inNormal1;
 
+#if DUPLICATEHANDLING
+#if DUPLICATECOLORS
+  if (inCloud1.load(cPar.file1, false, cPar.dropDuplicates, cPar.neighborsProc))
+#else
+  if (inCloud1.load(cPar.file1, false, cPar.dropDuplicates))
+#endif
+#else
   if (inCloud1.load(cPar.file1))
+#endif
   {
     cout << "Error reading reference point cloud:" << cPar.file1 << endl;
     return -1;
@@ -171,7 +182,11 @@ int main (int argc, char *argv[])
 
   if (cPar.normIn != "")
   {
+#if DUPLICATEHANDLING
+    if (inNormal1.load(cPar.normIn, true, cPar.dropDuplicates))
+#else
     if (inNormal1.load(cPar.normIn, true))
+#endif
     {
       cout << "Error reading normal reference point cloud:" << cPar.normIn << endl;
       return -1;
@@ -182,7 +197,11 @@ int main (int argc, char *argv[])
   if (cPar.file2 != "")
   {
 #if DUPLICATEHANDLING
+#if DUPLICATECOLORS
+    if (inCloud2.load(cPar.file2, false, cPar.dropDuplicates, cPar.neighborsProc))
+#else
     if (inCloud2.load(cPar.file2, false, cPar.dropDuplicates))
+#endif
 #else
     if (inCloud2.load(cPar.file2))
 #endif

@@ -307,11 +307,22 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
 
+#if DUPLICATECOLORS
+#define NUM_RESULTS 10
+    const size_t num_results = NUM_RESULTS;
+#if DUPLICATECOLORS_DEBUG
+    long NbNeighborsDst[NUM_RESULTS];
+    for (long i = 0; i < NUM_RESULTS; i++)
+      NbNeighborsDst[i] = 0;
+#endif
+#else
+    const size_t num_results = 1;
+#endif
 #pragma omp parallel for
   for (long i = 0; i < cloudA.size; i++)
   {
-    // Find the nearest neighbor in B. store it in 'j'
-    const size_t num_results = 1;
+    // For point 'i' in A, find its nearest neighbor in B. store it in 'j'
+
     vector<size_t> indices(num_results);
     vector<double> sqrDist(num_results);
 
@@ -319,6 +330,26 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
     resultSet.init( &indices[0], &sqrDist[0] );
     mat_indexB.index->findNeighbors( resultSet, &cloudA.xyz.p[i][0], SearchParams(10) );
+
+#if DUPLICATECOLORS
+    bool previous = true;
+    vector<size_t> indices_sameDst(num_results);
+    vector<vector<unsigned char>> rgb(num_results);
+
+    indices_sameDst[0] = indices[0];
+    rgb[0] = cloudB.rgb.c[indices[0]];
+
+    for (long n = 1; n < num_results; n++)
+    {
+      if (fabs(sqrDist[n] == sqrDist[n - 1]) < 1e-8 && previous == true)
+      {
+        indices_sameDst[n] = indices[n];
+        rgb[n] = cloudB.rgb.c[indices[n]];
+      }
+      else
+        previous = false;
+    }
+#endif
 
     int j = indices[0];
     if (j < 0)
@@ -356,8 +387,88 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       float out[3];
       float in[3];
 
-      convertRGBtoYUV_BT709(cloudA.rgb.c[i],in);
-      convertRGBtoYUV_BT709(cloudB.rgb.c[j],out);
+      convertRGBtoYUV_BT709(cloudA.rgb.c[i], in);
+#if DUPLICATECOLORS
+      if (cPar.neighborsProc)
+      {
+        unsigned int r = 0, g = 0, b = 0;
+        vector<unsigned char> color;
+        color.resize(3);
+        switch (cPar.neighborsProc)
+        {
+        case 0:
+      	  break;
+        case 1:     // Average
+        case 2:     // Weighted average
+        {
+          int nbdupcumul = 0;
+          for (long n = 0; n < num_results; n++)
+          {
+            if (rgb[n].size())
+            {
+              int nbdup = cloudB.xyz.nbdup[indices_sameDst[n]];
+              r += nbdup*rgb[n][0];
+              g += nbdup*rgb[n][1];
+              b += nbdup*rgb[n][2];
+              nbdupcumul += nbdup;
+            }
+          }
+          assert(nbdupcumul);
+          color[0] = (unsigned char)round((double)r / nbdupcumul);
+          color[1] = (unsigned char)round((double)g / nbdupcumul);
+          color[2] = (unsigned char)round((double)b / nbdupcumul);
+        }
+        break;
+        case 3:   // Min
+        {
+          unsigned int distColor_min = (std::numeric_limits<unsigned int>::max)();
+          size_t nmin = 0;
+          for (long n = 0; n < num_results; n++)
+          {
+            if (rgb[n].size())
+            {
+              unsigned int distRGB = (cloudA.rgb.c[i][0] - rgb[n][0]) * (cloudA.rgb.c[i][0] - rgb[n][0])
+                                   + (cloudA.rgb.c[i][1] - rgb[n][1]) * (cloudA.rgb.c[i][1] - rgb[n][1])
+                                   + (cloudA.rgb.c[i][2] - rgb[n][2]) * (cloudA.rgb.c[i][2] - rgb[n][2]);
+              if (distRGB < distColor_min)
+              {
+                distColor_min = distRGB;
+                nmin = n;
+              }
+            }
+          }
+          color[0] = rgb[nmin][0]; color[1] = rgb[nmin][1]; color[2] = rgb[nmin][2];
+        }
+        break;
+        case 4:   // Max
+        {
+          unsigned int distColor_max = 0;
+          size_t nmax = 0;
+          for (long n = 0; n < num_results; n++)
+          {
+            if (rgb[n].size())
+            {
+              unsigned int distRGB = (cloudA.rgb.c[i][0] - rgb[n][0]) * (cloudA.rgb.c[i][0] - rgb[n][0])
+                                   + (cloudA.rgb.c[i][1] - rgb[n][1]) * (cloudA.rgb.c[i][1] - rgb[n][1])
+                                   + (cloudA.rgb.c[i][2] - rgb[n][2]) * (cloudA.rgb.c[i][2] - rgb[n][2]);
+              if (distRGB > distColor_max)
+              {
+                distColor_max = distRGB;
+                nmax = n;
+              }
+            }
+          }
+          color[0] = rgb[nmax][0]; color[1] = rgb[nmax][1]; color[2] = rgb[nmax][2];
+        }
+        break;
+        }
+        convertRGBtoYUV_BT709(color, out);
+      }
+      else
+#endif
+      {
+        convertRGBtoYUV_BT709(cloudB.rgb.c[j], out);
+      }
 
       distColor[0] = (in[0] - out[0]) * (in[0] - out[0]);
       distColor[1] = (in[1] - out[1]) * (in[1] - out[1]);
@@ -395,8 +506,17 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       sse_reflectance += distReflectance;
     }
 
+#if DUPLICATECOLORS_DEBUG
+    for (long n = 0; n < num_results; n++)
+      if (rgb[n].size())
+        NbNeighborsDst[n]++;
+#endif
+
     myMutex.unlock();
   }
+#if DUPLICATECOLORS_DEBUG
+   cout << " DEBUG: " << NbNeighborsDst[1] << " points (" << (float)NbNeighborsDst[1] * 100.0 / cloudA.size << "%) found with at least 2 neighbors at the same minimum distance" << endl;
+#endif
 
   metric.c2p_mse = float( sse_dist_b_c2p / num );
   metric.c2c_mse = float( sse_dist_b_c2c / num );
@@ -459,6 +579,9 @@ commandPar::commandPar()
   resolution = 0.0;
 #if DUPLICATEHANDLING
   dropDuplicates = 0;
+#endif
+#if DUPLICATECOLORS
+  neighborsProc = 0;
 #endif
 }
 

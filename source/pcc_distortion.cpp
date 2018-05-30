@@ -332,22 +332,28 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     mat_indexB.index->findNeighbors( resultSet, &cloudA.xyz.p[i][0], SearchParams(10) );
 
 #if DUPLICATECOLORS
-    bool previous = true;
-    vector<size_t> indices_sameDst(num_results);
-    vector<vector<unsigned char>> rgb(num_results);
+    vector<size_t> indices_sameDst;
+    vector<vector<unsigned char>> rgb;
 
-    indices_sameDst[0] = indices[0];
-    rgb[0] = cloudB.rgb.c[indices[0]];
-
-    for (long n = 1; n < num_results; n++)
+    if (cPar.bColor & cloudA.bRgb && cloudB.bRgb)
     {
-      if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8 && previous == true)
+      bool previous = true;
+      indices_sameDst.resize(num_results);
+      rgb.resize(num_results);
+
+      indices_sameDst[0] = indices[0];
+      rgb[0] = cloudB.rgb.c[indices[0]];
+
+      for (long n = 1; n < num_results; n++)
       {
-        indices_sameDst[n] = indices[n];
-        rgb[n] = cloudB.rgb.c[indices[n]];
+        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8 && previous == true)
+        {
+          indices_sameDst[n] = indices[n];
+          rgb[n] = cloudB.rgb.c[indices[n]];
+        }
+        else
+          previous = false;
       }
-      else
-        previous = false;
     }
 #endif
 

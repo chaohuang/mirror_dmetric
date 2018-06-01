@@ -1,5 +1,8 @@
 Main Changes Log
 
+- Changes after initial release since MPEG 122 meeting, Jun 1, 2018, ver 0.12
+* Fixed a typo, impacts on RGB from duplicated points
+
 - Changes from MPEG 122 meeting, May 25, 2018, ver 0.12
 * Handle RGB color from duplicated point. (Chevet Jean-Claude and Llach Joan)
   Ref: m42759

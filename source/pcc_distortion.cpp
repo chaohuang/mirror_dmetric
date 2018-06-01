@@ -341,7 +341,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
     for (long n = 1; n < num_results; n++)
     {
-      if (fabs(sqrDist[n] == sqrDist[n - 1]) < 1e-8 && previous == true)
+      if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8 && previous == true)
       {
         indices_sameDst[n] = indices[n];
         rgb[n] = cloudB.rgb.c[indices[n]];

@@ -329,17 +329,18 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     KNNResultSet<double> resultSet(num_results);
 
     resultSet.init( &indices[0], &sqrDist[0] );
-    mat_indexB.index->findNeighbors( resultSet, &cloudA.xyz.p[i][0], SearchParams(10) );
+    if (!mat_indexB.index->findNeighbors(resultSet, &cloudA.xyz.p[i][0], SearchParams(10)))
+    {
+      cout << " WARNING: requested neighbors could not be found " << endl;
+    }
 
 #if DUPLICATECOLORS
-    vector<size_t> indices_sameDst;
-    vector<vector<unsigned char>> rgb;
-
-    if (cPar.bColor & cloudA.bRgb && cloudB.bRgb)
+    vector<vector<unsigned char>> rgb(num_results);
+    vector<size_t> indices_sameDst(num_results);
+    if (cPar.bColor)
     {
+      assert(cloudA.bRgb && cloudB.bRgb);
       bool previous = true;
-      indices_sameDst.resize(num_results);
-      rgb.resize(num_results);
 
       indices_sameDst[0] = indices[0];
       rgb[0] = cloudB.rgb.c[indices[0]];
@@ -667,6 +668,24 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     scaleNormals( cloudA, cloudNormalsA, cloudB, cloudNormalsB );
   cout << "Normals prepared." << endl;
   cout << endl;
+
+  if (cPar.bColor && (!cloudA.bRgb || !cloudB.bRgb))
+  {
+    cout << "WARNING: no color properties in input files, disabling color metrics.\n";
+    cPar.bColor = false;
+  }
+
+  if (cPar.bLidar && (!cloudA.bLidar || !cloudB.bLidar))
+  {
+    cout << "WARNING: no reflectance property in input files, disabling reflectance metrics.\n";
+    cPar.bLidar = false;
+  }
+#if DUPLICATECOLORS
+  if (cPar.bLidar && cPar.neighborsProc)
+  {
+    cout << "WARNING: reflectance metrics are computed without neighborsProc parameter.\n";
+  }
+#endif
 
   // Use "a" as reference
   cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";

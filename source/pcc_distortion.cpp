@@ -296,11 +296,14 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   double sse_dist_b_c2c = 0;
   double max_dist_b_c2p = std::numeric_limits<double>::min();
   double sse_dist_b_c2p = 0;
+  double max_reflectance = std::numeric_limits<double>::min();
   double sse_reflectance = 0;
   long num = 0;
 
   double sse_color[3];
   sse_color[0] = sse_color[1] = sse_color[2] = 0.0;
+  double max_colorRGB[3];
+  max_colorRGB[0] = max_colorRGB[1] = max_colorRGB[2] = std::numeric_limits<double>::min();
 
   typedef vector< vector<double> > my_vector_of_vectors_t;
   typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
@@ -389,6 +392,8 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
     double distColor[3];
     distColor[0] = distColor[1] = distColor[2] = 0.0;
+    double distColorRGB[3];
+    distColorRGB[0] = distColorRGB[1] = distColorRGB[2] = std::numeric_limits<double>::min();
     if (cPar.bColor && cloudA.bRgb && cloudB.bRgb)
     {
       float out[3];
@@ -470,11 +475,17 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         break;
         }
         convertRGBtoYUV_BT709(color, out);
+        distColorRGB[0] = (cloudA.rgb.c[i][0] - color[0]) * (cloudA.rgb.c[i][0] - color[0]);
+        distColorRGB[1] = (cloudA.rgb.c[i][1] - color[1]) * (cloudA.rgb.c[i][1] - color[1]);
+        distColorRGB[2] = (cloudA.rgb.c[i][2] - color[2]) * (cloudA.rgb.c[i][2] - color[2]);
       }
       else
 #endif
       {
         convertRGBtoYUV_BT709(cloudB.rgb.c[j], out);
+        distColorRGB[0] = (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]) * (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]);
+        distColorRGB[1] = (cloudA.rgb.c[i][1] - cloudB.rgb.c[j][1]) * (cloudA.rgb.c[i][1] - cloudB.rgb.c[j][1]);
+        distColorRGB[2] = (cloudA.rgb.c[i][2] - cloudB.rgb.c[j][2]) * (cloudA.rgb.c[i][2] - cloudB.rgb.c[j][2]);
       }
 
       distColor[0] = (in[0] - out[0]) * (in[0] - out[0]);
@@ -507,10 +518,15 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       sse_color[0] += distColor[0];
       sse_color[1] += distColor[1];
       sse_color[2] += distColor[2];
+
+      max_colorRGB[0] = max(max_colorRGB[0], distColorRGB[0]);
+      max_colorRGB[1] = max(max_colorRGB[1], distColorRGB[1]);
+      max_colorRGB[2] = max(max_colorRGB[2], distColorRGB[2]);
     }
     if (cPar.bLidar && cloudA.bLidar && cloudB.bLidar)
     {
       sse_reflectance += distReflectance;
+      max_reflectance = max(max_reflectance, distReflectance);
     }
 
 #if DUPLICATECOLORS_DEBUG
@@ -545,12 +561,22 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     metric.color_psnr[0] = getPSNR( metric.color_mse[0], 1.0 );
     metric.color_psnr[1] = getPSNR( metric.color_mse[1], 1.0 );
     metric.color_psnr[2] = getPSNR( metric.color_mse[2], 1.0 );
+
+    metric.color_rgb_hausdorff[0] = float( max_colorRGB[0] );
+    metric.color_rgb_hausdorff[1] = float( max_colorRGB[1] );
+    metric.color_rgb_hausdorff[2] = float( max_colorRGB[2] );
+
+    metric.color_rgb_hausdorff_psnr[0] = getPSNR( metric.color_rgb_hausdorff[0], 255.0 );
+    metric.color_rgb_hausdorff_psnr[1] = getPSNR( metric.color_rgb_hausdorff[1], 255.0 );
+    metric.color_rgb_hausdorff_psnr[2] = getPSNR( metric.color_rgb_hausdorff[2], 255.0 );
   }
 
   if (cPar.bLidar)
   {
     metric.reflectance_mse = float( sse_reflectance / num );
     metric.reflectance_psnr = getPSNR( float( metric.reflectance_mse ), float( std::numeric_limits<unsigned short>::max() ) );
+    metric.reflectance_hausdorff = float( max_reflectance );
+    metric.reflectance_hausdorff_psnr = getPSNR(metric.reflectance_hausdorff, std::numeric_limits<unsigned short>::max() );
   }
 
 #if PRINT_TIMING
@@ -607,6 +633,12 @@ qMetric::qMetric()
 
   color_mse[0] = color_mse[1] = color_mse[2] = 0.0;
   color_psnr[0] = color_psnr[1] = color_psnr[2] = 0.0;
+
+  color_rgb_hausdorff[0] = color_rgb_hausdorff[1] = color_rgb_hausdorff[2] = 0.0;
+  color_rgb_hausdorff_psnr[0] = color_rgb_hausdorff_psnr[1] = color_rgb_hausdorff_psnr[2] = 0.0;
+
+  reflectance_hausdorff = 0.0;
+  reflectance_hausdorff_psnr = 0.0;
 }
 
 /**!
@@ -718,11 +750,25 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     cout << "   c[0],PSNR1         : " << metricA.color_psnr[0] << endl;
     cout << "   c[1],PSNR1         : " << metricA.color_psnr[1] << endl;
     cout << "   c[2],PSNR1         : " << metricA.color_psnr[2] << endl;
+    if ( cPar.hausdorff )
+    {
+      cout << " h.c[0],    1         : " << metricA.color_rgb_hausdorff[0] << endl;
+      cout << " h.c[1],    1         : " << metricA.color_rgb_hausdorff[1] << endl;
+      cout << " h.c[2],    1         : " << metricA.color_rgb_hausdorff[2] << endl;
+      cout << " h.c[0],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[0] << endl;
+      cout << " h.c[1],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[1] << endl;
+      cout << " h.c[2],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[2] << endl;
+    }
   }
   if ( cPar.bLidar )
   {
     cout << "   r,       1         : " << metricA.reflectance_mse  << endl;
     cout << "   r,PSNR   1         : " << metricA.reflectance_psnr << endl;
+    if ( cPar.hausdorff )
+    {
+      cout << " h.r,       1         : " << metricA.reflectance_hausdorff  << endl;
+      cout << " h.r,PSNR   1         : " << metricA.reflectance_hausdorff_psnr << endl;
+    }
   }
 
   if (!cPar.singlePass)
@@ -758,11 +804,26 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
       cout << "   c[0],PSNR2         : " << metricB.color_psnr[0] << endl;
       cout << "   c[1],PSNR2         : " << metricB.color_psnr[1] << endl;
       cout << "   c[2],PSNR2         : " << metricB.color_psnr[2] << endl;
+      if ( cPar.hausdorff)
+      {
+        cout << " h.c[0],    2         : " << metricB.color_rgb_hausdorff[0] << endl;
+        cout << " h.c[1],    2         : " << metricB.color_rgb_hausdorff[1] << endl;
+        cout << " h.c[2],    2         : " << metricB.color_rgb_hausdorff[2] << endl;
+        cout << " h.c[0],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[0] << endl;
+        cout << " h.c[1],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[1] << endl;
+        cout << " h.c[2],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[2] << endl;
+      }
     }
     if ( cPar.bLidar )
     {
       cout << "   r,       2         : " << metricB.reflectance_mse  << endl;
       cout << "   r,PSNR   2         : " << metricB.reflectance_psnr << endl;
+      if ( cPar.hausdorff )
+      {
+        cout << " h.r,       2         : " << metricB.reflectance_hausdorff  << endl;
+        cout << " h.r,PSNR   2         : " << metricB.reflectance_hausdorff_psnr << endl;
+      }
+
     }
 
     // Derive the final symmetric metric
@@ -785,11 +846,21 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
       qual_metric.color_psnr[0] = min( metricA.color_psnr[0], metricB.color_psnr[0] );
       qual_metric.color_psnr[1] = min( metricA.color_psnr[1], metricB.color_psnr[1] );
       qual_metric.color_psnr[2] = min( metricA.color_psnr[2], metricB.color_psnr[2] );
+
+      qual_metric.color_rgb_hausdorff[0] = max( metricA.color_rgb_hausdorff[0], metricB.color_rgb_hausdorff[0] );
+      qual_metric.color_rgb_hausdorff[1] = max( metricA.color_rgb_hausdorff[1], metricB.color_rgb_hausdorff[1] );
+      qual_metric.color_rgb_hausdorff[2] = max( metricA.color_rgb_hausdorff[2], metricB.color_rgb_hausdorff[2] );
+
+      qual_metric.color_rgb_hausdorff_psnr[0] = min( metricA.color_rgb_hausdorff_psnr[0], metricB.color_rgb_hausdorff_psnr[0] );
+      qual_metric.color_rgb_hausdorff_psnr[1] = min( metricA.color_rgb_hausdorff_psnr[1], metricB.color_rgb_hausdorff_psnr[1] );
+      qual_metric.color_rgb_hausdorff_psnr[2] = min( metricA.color_rgb_hausdorff_psnr[2], metricB.color_rgb_hausdorff_psnr[2] );
     }
     if ( cPar.bLidar )
     {
       qual_metric.reflectance_mse  = max( metricA.reflectance_mse,  metricB.reflectance_mse  );
       qual_metric.reflectance_psnr = min( metricA.reflectance_psnr, metricB.reflectance_psnr );
+      qual_metric.reflectance_hausdorff  = max( metricA.reflectance_hausdorff,  metricB.reflectance_hausdorff  );
+      qual_metric.reflectance_hausdorff_psnr = min( metricA.reflectance_hausdorff_psnr, metricB.reflectance_hausdorff_psnr );
     }
 
     cout << "3. Final (symmetric).\n";
@@ -818,11 +889,25 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
       cout << "   c[0],PSNRF         : " << qual_metric.color_psnr[0] << endl;
       cout << "   c[1],PSNRF         : " << qual_metric.color_psnr[1] << endl;
       cout << "   c[2],PSNRF         : " << qual_metric.color_psnr[2] << endl;
+      if ( cPar.hausdorff )
+      {
+        cout << " h.c[0],    F         : " << qual_metric.color_rgb_hausdorff[0] << endl;
+        cout << " h.c[1],    F         : " << qual_metric.color_rgb_hausdorff[1] << endl;
+        cout << " h.c[2],    F         : " << qual_metric.color_rgb_hausdorff[2] << endl;
+        cout << " h.c[0],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[0] << endl;
+        cout << " h.c[1],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[1] << endl;
+        cout << " h.c[2],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[2] << endl;
+      }
     }
     if ( cPar.bLidar )
     {
       cout << "   r,       F         : " << qual_metric.reflectance_mse  << endl;
       cout << "   r,PSNR   F         : " << qual_metric.reflectance_psnr << endl;
+      if ( cPar.hausdorff )
+      {
+        cout << " h.r,       F         : " << qual_metric.reflectance_hausdorff  << endl;
+        cout << " h.r,PSNR   F         : " << qual_metric.reflectance_hausdorff_psnr << endl;
+      }
     }
   }
 }

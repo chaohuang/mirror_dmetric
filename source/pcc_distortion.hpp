@@ -109,6 +109,8 @@ namespace pcc_quality {
 
     float color_mse[3];       //! color components, root mean square
     float color_psnr[3];      //! psnr
+    float color_rgb_hausdorff[3]; //! color components, hausdorff
+    float color_rgb_hausdorff_psnr[3]; //! psnr hausdorff
 
     // point-2-plane ( cloud 2 plane ), proposed metric
     float c2p_mse;            //! store symm mse metric
@@ -122,6 +124,8 @@ namespace pcc_quality {
     // reflectance
     float reflectance_mse;
     float reflectance_psnr;
+    float reflectance_hausdorff;
+    float reflectance_hausdorff_psnr;
 
     qMetric();
   };

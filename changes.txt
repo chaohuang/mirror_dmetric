@@ -1,6 +1,11 @@
 Main Changes Log
 
-- Changes after initial release since MPEG 122 meeting, Jun 1, 2018, ver 0.12
+- Release for MPEG 122 CE, July 5, 2018, ver 0.12.2
+* fixed crash when input pointcloud does not have colour attributes (DF)
+* sanitize parameters based on input pointcloud attributes (Chevet Jean-Claude)
+* Add Hausdorff distance for color (RGB) and reflectance (Valery Valentin)
+
+- Changes after initial release since MPEG 122 meeting, Jun 1, 2018, ver 0.12.1
 * Fixed a typo, impacts on RGB from duplicated points
 
 - Changes from MPEG 122 meeting, May 25, 2018, ver 0.12
@@ -73,6 +78,7 @@ Main Changes Log
 
 - Contributor lists:
   DT: Dong Tian
+  DF: David Flynn
   MK: Maja Krivokuca
   PC: Phil Chou
   RM: Rufael Mekuria

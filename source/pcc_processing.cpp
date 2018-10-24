@@ -105,8 +105,6 @@ PointXYZSet::init( long int size, int i0, int i1, int i2 )
   nbdup.resize( size );
   std::fill(nbdup.begin(), nbdup.end(), 1);
 #endif
-  for (long int i = 0; i < size; i++)
-    p[i].resize( 3 );
 }
 
 /**!
@@ -169,8 +167,6 @@ RGBSet::init( long int size, int i0, int i1, int i2 )
     idxInLine[2] = i2;
 
   c.resize( size );
-  for (long int i = 0; i < size; i++)
-    c[i].resize( 3 );
 }
 
 int
@@ -212,8 +208,6 @@ NormalSet::init( long int size, int i0, int i1, int i2 )
     idxInLine[2] = i2;
 
   n.resize( size );
-  for (long int i = 0; i < size; i++)
-    n[i].resize( 3 );
 }
 
 /**!
@@ -776,8 +770,11 @@ PccPointCloud::load( string inFile, bool isNormal )
       long cattr[3]; // sum colors.
       long lattr; // sum lidar.
     };
-    std::map<std::vector<double>, struct dupAvg> coordsSeen; // x,y,z coords already seen, map to index and n.
-    std::map<std::vector<double>, struct dupAvg>::iterator seen;
+
+    // x,y,z coords already seen, map to index and n.
+    std::map<PointXYZSet::point_type, struct dupAvg> coordsSeen;
+    decltype(coordsSeen)::iterator seen;
+
     for (long int inputScan = 0; inputScan < size; inputScan++, i++)
 #else
     for (long int i = 0; i < size; i++)
@@ -835,7 +832,7 @@ PccPointCloud::load( string inFile, bool isNormal )
         {
           avg.lattr = lidar.reflectance[i];
         }
-        coordsSeen.insert(std::pair<std::vector<double>, struct dupAvg>(xyz.p[i], avg));
+        coordsSeen.emplace(xyz.p[i], avg);
       }
 #endif
     }

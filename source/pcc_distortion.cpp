@@ -76,7 +76,7 @@ using namespace nanoflann;
 void
 findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
 {
-  typedef vector< vector<double> > my_vector_of_vectors_t;
+  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
   typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
 
   maxDist =  numeric_limits<double>::min();
@@ -177,7 +177,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     vecMap[i].clear();
   }
 
-  typedef vector< vector<double> > my_vector_of_vectors_t;
+  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
   typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
 
   my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
@@ -241,7 +241,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
    \brief helper function to convert RGB to YUV, using BT.601
 */
 void
-convertRGBtoYUV(const vector<unsigned char>  &in_rgb, float *out_yuv)
+convertRGBtoYUV(const std::array<unsigned char,3>  &in_rgb, float *out_yuv)
 {
   // color space conversion to YUV
   out_yuv[0] = float( ( 0.299 * in_rgb[0] + 0.587 * in_rgb[1] + 0.114 * in_rgb[2]) / 255.0 );
@@ -253,7 +253,7 @@ convertRGBtoYUV(const vector<unsigned char>  &in_rgb, float *out_yuv)
    \brief helper function to convert RGB to YUV, using BT.709 formula
 */
 void
-convertRGBtoYUV_BT709(const vector<unsigned char>  &in_rgb, float *out_yuv)
+convertRGBtoYUV_BT709(const std::array<unsigned char,3>  &in_rgb, float *out_yuv)
 {
   // color space conversion to YUV
   out_yuv[0] = float( ( 0.2126 * in_rgb[0] + 0.7152 * in_rgb[1] + 0.0722 * in_rgb[2]) / 255.0 );
@@ -305,7 +305,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   double max_colorRGB[3];
   max_colorRGB[0] = max_colorRGB[1] = max_colorRGB[2] = std::numeric_limits<double>::min();
 
-  typedef vector< vector<double> > my_vector_of_vectors_t;
+  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
   typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
 
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
@@ -338,25 +338,23 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     }
 
 #if DUPLICATECOLORS
-    vector<vector<unsigned char>> rgb(num_results);
-    vector<size_t> indices_sameDst(num_results);
+    struct SameDistRgb {
+      RGBSet::value_type rgb;
+      size_t index;
+    };
+    vector<SameDistRgb> sameDistRgb;
+    sameDistRgb.reserve(num_results);
     if (cPar.bColor)
     {
       assert(cloudA.bRgb && cloudB.bRgb);
-      bool previous = true;
+      sameDistRgb.emplace_back(SameDistRgb{cloudB.rgb.c[indices[0]], indices[0]});
 
-      indices_sameDst[0] = indices[0];
-      rgb[0] = cloudB.rgb.c[indices[0]];
-
-      for (long n = 1; n < num_results; n++)
+      for (size_t n = 1; n < num_results; n++)
       {
-        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8 && previous == true)
-        {
-          indices_sameDst[n] = indices[n];
-          rgb[n] = cloudB.rgb.c[indices[n]];
-        }
+        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8)
+          sameDistRgb.emplace_back(SameDistRgb{cloudB.rgb.c[indices[n]], indices[n]});
         else
-          previous = false;
+          break;
       }
     }
 #endif
@@ -366,7 +364,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       continue;
 
     // Compute the error vector
-    vector<double> errVector(3);
+    std::array<double,3> errVector;
     errVector[0] = cloudA.xyz.p[i][0] - cloudB.xyz.p[j][0];
     errVector[1] = cloudA.xyz.p[i][1] - cloudB.xyz.p[j][1];
     errVector[2] = cloudA.xyz.p[i][2] - cloudB.xyz.p[j][2];
@@ -404,8 +402,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       if (cPar.neighborsProc)
       {
         unsigned int r = 0, g = 0, b = 0;
-        vector<unsigned char> color;
-        color.resize(3);
+        std::array<unsigned char,3> color;
         switch (cPar.neighborsProc)
         {
         case 0:
@@ -414,16 +411,13 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         case 2:     // Weighted average
         {
           int nbdupcumul = 0;
-          for (long n = 0; n < num_results; n++)
+          for (const auto& value : sameDistRgb)
           {
-            if (rgb[n].size())
-            {
-              int nbdup = cloudB.xyz.nbdup[indices_sameDst[n]];
-              r += nbdup*rgb[n][0];
-              g += nbdup*rgb[n][1];
-              b += nbdup*rgb[n][2];
-              nbdupcumul += nbdup;
-            }
+            int nbdup = cloudB.xyz.nbdup[value.index];
+            r += nbdup*value.rgb[0];
+            g += nbdup*value.rgb[1];
+            b += nbdup*value.rgb[2];
+            nbdupcumul += nbdup;
           }
           assert(nbdupcumul);
           color[0] = (unsigned char)round((double)r / nbdupcumul);
@@ -433,44 +427,38 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         break;
         case 3:   // Min
         {
+          const std::array<unsigned char, 3ul>* minrgb = &sameDistRgb[0].rgb;
           unsigned int distColor_min = (std::numeric_limits<unsigned int>::max)();
-          size_t nmin = 0;
-          for (long n = 0; n < num_results; n++)
+          for (const auto& value : sameDistRgb)
           {
-            if (rgb[n].size())
+            unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
+                                 + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
+                                 + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);
+            if (distRGB < distColor_min)
             {
-              unsigned int distRGB = (cloudA.rgb.c[i][0] - rgb[n][0]) * (cloudA.rgb.c[i][0] - rgb[n][0])
-                                   + (cloudA.rgb.c[i][1] - rgb[n][1]) * (cloudA.rgb.c[i][1] - rgb[n][1])
-                                   + (cloudA.rgb.c[i][2] - rgb[n][2]) * (cloudA.rgb.c[i][2] - rgb[n][2]);
-              if (distRGB < distColor_min)
-              {
-                distColor_min = distRGB;
-                nmin = n;
-              }
+              distColor_min = distRGB;
+              minrgb = &value.rgb;
             }
           }
-          color[0] = rgb[nmin][0]; color[1] = rgb[nmin][1]; color[2] = rgb[nmin][2];
+          color = *minrgb;
         }
         break;
         case 4:   // Max
         {
+          const std::array<unsigned char, 3ul>* maxrgb = &sameDistRgb[0].rgb;
           unsigned int distColor_max = 0;
-          size_t nmax = 0;
-          for (long n = 0; n < num_results; n++)
+          for (const auto& value : sameDistRgb)
           {
-            if (rgb[n].size())
+            unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
+                                 + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
+                                 + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);
+            if (distRGB > distColor_max)
             {
-              unsigned int distRGB = (cloudA.rgb.c[i][0] - rgb[n][0]) * (cloudA.rgb.c[i][0] - rgb[n][0])
-                                   + (cloudA.rgb.c[i][1] - rgb[n][1]) * (cloudA.rgb.c[i][1] - rgb[n][1])
-                                   + (cloudA.rgb.c[i][2] - rgb[n][2]) * (cloudA.rgb.c[i][2] - rgb[n][2]);
-              if (distRGB > distColor_max)
-              {
-                distColor_max = distRGB;
-                nmax = n;
-              }
+              distColor_max = distRGB;
+              maxrgb = &value.rgb;
             }
           }
-          color[0] = rgb[nmax][0]; color[1] = rgb[nmax][1]; color[2] = rgb[nmax][2];
+          color = *maxrgb;
         }
         break;
         }

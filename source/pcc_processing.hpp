@@ -41,6 +41,7 @@
 #ifndef PCC_PROCESSING_HPP
 #define PCC_PROCESSING_HPP
 
+#include <array>
 #include <iostream>
 #include <fstream>
 #include <memory>
@@ -77,7 +78,8 @@ namespace pcc_processing {
   private:
     int idxInLine[3];           //! index of the x,y,z in the line
   public:
-    vector< vector<double> > p;
+    typedef std::array<double, 3> point_type;
+    vector<point_type> p;
 #if DUPLICATECOLORS
     vector< int > nbdup;
 #endif
@@ -92,7 +94,8 @@ namespace pcc_processing {
   private:
     int idxInLine[3];           //! index of the r,g,b in the line
   public:
-    vector<vector<unsigned char>> c;
+    typedef std::array<unsigned char, 3> value_type;
+    vector<value_type> c;
     RGBSet() {}
     ~RGBSet();
     virtual int loadPoints( PccPointCloud *pPcc, long int idx );
@@ -104,7 +107,8 @@ namespace pcc_processing {
   private:
     int idxInLine[3];           //! index of the x,y,z in the line
   public:
-    vector<vector<float>> n;
+    typedef std::array<float, 3> value_type;
+    vector<value_type> n;
     NormalSet() { }
     ~NormalSet();
     virtual int loadPoints( PccPointCloud *pPcc, long int idx );

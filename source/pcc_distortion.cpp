@@ -53,14 +53,28 @@ using namespace std;
 using namespace pcc_quality;
 using namespace nanoflann;
 
-
+// Representation of linear point cloud indexes in kd-tree
 typedef uint32_t index_type;
+
+// Representation of distance metric during kd-tree search
 typedef double distance_type;
+
+// A version of nanoflann::metric_L2 that forces metric (distance)
+// calculations to be performed using double precision floats.
+// NB: by default nanoflann::metric_L2 will be used with the metric
+//     type of T = num_t (the coordinate type).
+struct metric_L2_double {
+  template<class T, class DataSource>
+  struct traits {
+    typedef nanoflann::L2_Adaptor<T,DataSource,double> distance_t;
+  };
+};
+
 typedef KDTreeVectorOfVectorsAdaptor<
   vector<PointXYZSet::point_type>,     // array type
   PointXYZSet::point_type::value_type, // coordinate type
   3,                                   // num dimensions
-  nanoflann::metric_L2,                // distance class
+  metric_L2_double,                    // distance class
   index_type                           // index type (eg size_t)
 > my_kd_tree_t;
 

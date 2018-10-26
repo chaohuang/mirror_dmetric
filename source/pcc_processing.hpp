@@ -78,7 +78,7 @@ namespace pcc_processing {
   private:
     int idxInLine[3];           //! index of the x,y,z in the line
   public:
-    typedef std::array<double, 3> point_type;
+    typedef std::array<float, 3> point_type;
     vector<point_type> p;
 #if DUPLICATECOLORS
     vector< int > nbdup;

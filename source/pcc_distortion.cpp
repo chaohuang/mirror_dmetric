@@ -52,6 +52,14 @@ using namespace std;
 using namespace pcc_quality;
 using namespace nanoflann;
 
+
+typedef size_t index_type;
+typedef double distance_type;
+typedef KDTreeVectorOfVectorsAdaptor<
+  vector<PointXYZSet::point_type>,     // array type
+  PointXYZSet::point_type::value_type  // coordinate type
+> my_kd_tree_t;
+
 #define PRINT_TIMING 0
 
 /*
@@ -76,9 +84,6 @@ using namespace nanoflann;
 void
 findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
 {
-  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
-  typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
-
   maxDist =  numeric_limits<double>::min();
   minDist =  numeric_limits<double>::max();
   double distTmp = 0;
@@ -92,8 +97,8 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
     // cout << "*** " << i << endl;
     // do a knn search
     const size_t num_results = 3;
-    vector<size_t> indices(num_results);
-    vector<double> sqrDist(num_results);
+    vector<index_type> indices(num_results);
+    vector<distance_type> sqrDist(num_results);
 
     KNNResultSet<double> resultSet(num_results);
 
@@ -177,9 +182,6 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     vecMap[i].clear();
   }
 
-  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
-  typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
-
   my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
 
@@ -187,8 +189,8 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
   {
 
     const size_t num_results = 1;
-    vector<size_t> indices(num_results);
-    vector<double> sqrDist(num_results);
+    vector<index_type> indices(num_results);
+    vector<distance_type> sqrDist(num_results);
 
     KNNResultSet<double> resultSet(num_results);
 
@@ -214,8 +216,8 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     else
     {
       const size_t num_results = 1;
-      vector<size_t> indices(num_results);
-      vector<double> sqrDist(num_results);
+      vector<index_type> indices(num_results);
+      vector<distance_type> sqrDist(num_results);
 
       KNNResultSet<double> resultSet(num_results);
 
@@ -305,9 +307,6 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   double max_colorRGB[3];
   max_colorRGB[0] = max_colorRGB[1] = max_colorRGB[2] = std::numeric_limits<double>::min();
 
-  typedef vector<PointXYZSet::point_type> my_vector_of_vectors_t;
-  typedef KDTreeVectorOfVectorsAdaptor< my_vector_of_vectors_t, double >  my_kd_tree_t;
-
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
 
 #if DUPLICATECOLORS
@@ -326,8 +325,8 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   {
     // For point 'i' in A, find its nearest neighbor in B. store it in 'j'
 
-    vector<size_t> indices(num_results);
-    vector<double> sqrDist(num_results);
+    vector<index_type> indices(num_results);
+    vector<distance_type> sqrDist(num_results);
 
     KNNResultSet<double> resultSet(num_results);
 

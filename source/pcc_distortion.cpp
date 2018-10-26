@@ -99,8 +99,8 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
     // cout << "*** " << i << endl;
     // do a knn search
     const size_t num_results = 3;
-    vector<index_type> indices(num_results);
-    vector<distance_type> sqrDist(num_results);
+    std::array<index_type,num_results> indices;
+    std::array<distance_type,num_results> sqrDist;
 
     mat_index.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
@@ -188,8 +188,8 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
   {
 
     const size_t num_results = 1;
-    vector<index_type> indices(num_results);
-    vector<distance_type> sqrDist(num_results);
+    std::array<index_type,num_results> indices;
+    std::array<distance_type,num_results> sqrDist;
 
     mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
@@ -212,8 +212,8 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     else
     {
       const size_t num_results = 1;
-      vector<index_type> indices(num_results);
-      vector<distance_type> sqrDist(num_results);
+      std::array<index_type,num_results> indices;
+      std::array<distance_type,num_results> sqrDist;
 
       mat_indexA.query(&cloudB.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
@@ -317,9 +317,8 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   for (long i = 0; i < cloudA.size; i++)
   {
     // For point 'i' in A, find its nearest neighbor in B. store it in 'j'
-
-    vector<index_type> indices(num_results);
-    vector<distance_type> sqrDist(num_results);
+    std::array<index_type,num_results> indices;
+    std::array<distance_type,num_results> sqrDist;
 
     if (!mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]))
     {
@@ -331,17 +330,19 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       RGBSet::value_type rgb;
       size_t index;
     };
-    vector<SameDistRgb> sameDistRgb;
-    sameDistRgb.reserve(num_results);
+    std::array<SameDistRgb,num_results> sameDistRgb;
+    int numSameDistRgb = 0;
+
     if (cPar.bColor)
     {
       assert(cloudA.bRgb && cloudB.bRgb);
-      sameDistRgb.emplace_back(SameDistRgb{cloudB.rgb.c[indices[0]], indices[0]});
+      sameDistRgb[0] = SameDistRgb{cloudB.rgb.c[indices[0]], indices[0]};
+      numSameDistRgb++;
 
       for (size_t n = 1; n < num_results; n++)
       {
         if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8)
-          sameDistRgb.emplace_back(SameDistRgb{cloudB.rgb.c[indices[n]], indices[n]});
+          sameDistRgb[numSameDistRgb++] = SameDistRgb{cloudB.rgb.c[indices[n]], indices[n]};
         else
           break;
       }
@@ -400,8 +401,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         case 2:     // Weighted average
         {
           int nbdupcumul = 0;
-          for (const auto& value : sameDistRgb)
+          for (int n = 0; n < numSameDistRgb; n++)
           {
+            const auto& value = sameDistRgb[n];
             int nbdup = cloudB.xyz.nbdup[value.index];
             r += nbdup*value.rgb[0];
             g += nbdup*value.rgb[1];
@@ -418,8 +420,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         {
           const std::array<unsigned char, 3ul>* minrgb = &sameDistRgb[0].rgb;
           unsigned int distColor_min = (std::numeric_limits<unsigned int>::max)();
-          for (const auto& value : sameDistRgb)
+          for (int n = 0; n < numSameDistRgb; n++)
           {
+            const auto& value = sameDistRgb[n];
             unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
                                  + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
                                  + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);
@@ -436,8 +439,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         {
           const std::array<unsigned char, 3ul>* maxrgb = &sameDistRgb[0].rgb;
           unsigned int distColor_max = 0;
-          for (const auto& value : sameDistRgb)
+          for (int n = 0; n < numSameDistRgb; n++)
           {
+            const auto& value = sameDistRgb[n];
             unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
                                  + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
                                  + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);

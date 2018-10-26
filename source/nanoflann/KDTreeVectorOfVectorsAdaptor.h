@@ -49,7 +49,7 @@
 template <class VectorOfVectorsType, typename num_t = double, int DIM = -1, class Distance = nanoflann::metric_L2, typename IndexType = size_t>
 struct KDTreeVectorOfVectorsAdaptor
 {
-	typedef KDTreeVectorOfVectorsAdaptor<VectorOfVectorsType,num_t,DIM,Distance> self_t;
+	typedef KDTreeVectorOfVectorsAdaptor<VectorOfVectorsType,num_t,DIM,Distance,IndexType> self_t;
 	typedef typename Distance::template traits<num_t,self_t>::distance_t metric_t;
 	typedef nanoflann::KDTreeSingleIndexAdaptor< metric_t,self_t,DIM,IndexType>  index_t;
 

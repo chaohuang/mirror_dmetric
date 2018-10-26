@@ -40,6 +40,7 @@
  *
  */
 
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -53,13 +54,14 @@ using namespace pcc_quality;
 using namespace nanoflann;
 
 
-typedef size_t index_type;
+typedef uint32_t index_type;
 typedef double distance_type;
 typedef KDTreeVectorOfVectorsAdaptor<
   vector<PointXYZSet::point_type>,     // array type
   PointXYZSet::point_type::value_type, // coordinate type
   3,                                   // num dimensions
-  nanoflann::metric_L2                 // distance class
+  nanoflann::metric_L2,                // distance class
+  index_type                           // index type (eg size_t)
 > my_kd_tree_t;
 
 #define PRINT_TIMING 0

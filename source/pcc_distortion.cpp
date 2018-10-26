@@ -102,10 +102,7 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
     vector<index_type> indices(num_results);
     vector<distance_type> sqrDist(num_results);
 
-    KNNResultSet<double> resultSet(num_results);
-
-    resultSet.init( &indices[0], &sqrDist[0] );
-    mat_index.index->findNeighbors( resultSet, &cloudA.xyz.p[i][0], SearchParams(10) );
+    mat_index.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
     if (indices[0] != i || sqrDist[1] <= 0.0000000001)
     {
@@ -194,10 +191,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     vector<index_type> indices(num_results);
     vector<distance_type> sqrDist(num_results);
 
-    KNNResultSet<double> resultSet(num_results);
-
-    resultSet.init( &indices[0], &sqrDist[0] );
-    mat_indexB.index->findNeighbors( resultSet, &cloudA.xyz.p[i][0], SearchParams(10) );
+    mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
     cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
     cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
@@ -221,10 +215,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
       vector<index_type> indices(num_results);
       vector<distance_type> sqrDist(num_results);
 
-      KNNResultSet<double> resultSet(num_results);
-
-      resultSet.init( &indices[0], &sqrDist[0] );
-      mat_indexA.index->findNeighbors( resultSet, &cloudB.xyz.p[i][0], SearchParams(10) );
+      mat_indexA.query(&cloudB.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
       cloudNormalsB.normal.n[i][0] = cloudNormalsA.normal.n[indices[0]][0];
       cloudNormalsB.normal.n[i][1] = cloudNormalsA.normal.n[indices[0]][1];
@@ -330,10 +321,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     vector<index_type> indices(num_results);
     vector<distance_type> sqrDist(num_results);
 
-    KNNResultSet<double> resultSet(num_results);
-
-    resultSet.init( &indices[0], &sqrDist[0] );
-    if (!mat_indexB.index->findNeighbors(resultSet, &cloudA.xyz.p[i][0], SearchParams(10)))
+    if (!mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]))
     {
       cout << " WARNING: requested neighbors could not be found " << endl;
     }

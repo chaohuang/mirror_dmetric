@@ -57,7 +57,9 @@ typedef size_t index_type;
 typedef double distance_type;
 typedef KDTreeVectorOfVectorsAdaptor<
   vector<PointXYZSet::point_type>,     // array type
-  PointXYZSet::point_type::value_type  // coordinate type
+  PointXYZSet::point_type::value_type, // coordinate type
+  3,                                   // num dimensions
+  nanoflann::metric_L2                 // distance class
 > my_kd_tree_t;
 
 #define PRINT_TIMING 0

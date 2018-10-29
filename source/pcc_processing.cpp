@@ -790,7 +790,6 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
   std::sort(this->begin(), this->end());
 
   // Find runs of identical point positions
-  int duplicatesFound = 0;
   for (auto it_seq = this->begin(); it_seq != this->end(); ) {
     it_seq = std::adjacent_find(it_seq, this->end());
     if (it_seq == this->end())
@@ -816,9 +815,6 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
         lattr += lidar.reflectance[idx];
     }
 
-    // count the extra points, not number of identical points
-    duplicatesFound += count - 1;
-
     int first_idx = it_seq.idx;
     it_seq = it;
 
@@ -839,18 +835,20 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
       lidar.reflectance[first_idx] = lattr / count;
   }
 
+  int duplicatesFound = 0;
   if (dropDuplicates != 0) {
     auto last = std::unique(this->begin(), this->end());
+    duplicatesFound = std::distance(last, this->end());
 
-    // todo(): this init call looks like a bug, overwriting ndups.
-    xyz.init(size - duplicatesFound, -1, -1, -1);
-    if (bNormal)
-      normal.init(size - duplicatesFound, -1, -1, -1);
-    if (bRgb)
-      rgb.init(size - duplicatesFound, -1, -1, -1);
-    if (bLidar)
-      lidar.init(size - duplicatesFound, -1);
     size -= duplicatesFound;
+    xyz.p.resize(size);
+    xyz.nbdup.resize(size);
+    if (bNormal)
+      normal.n.resize(size);
+    if (bRgb)
+      rgb.c.resize(size);
+    if (bLidar)
+      lidar.reflectance.resize(size);
   }
 
   if (duplicatesFound > 0)

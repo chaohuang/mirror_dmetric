@@ -657,7 +657,7 @@ PccPointCloud::seekBinary(ifstream &in)
  * \brief load data into memory
  * \param[in]
  *   inFile: File name of the input point cloud
- *   isNormal: true to import normals. false to load non-normal data
+ *   normalsOnly: Import only normals, or all data
  *   dropDuplicates: 0 (detect only), 1 (drop), 2 (average)
  *
  * \return 0, if succeed
@@ -666,7 +666,7 @@ PccPointCloud::seekBinary(ifstream &in)
  *  Dong Tian <tian@merl.com>
  */
 int
-PccPointCloud::load(string inFile, bool isNormal, int dropDuplicates, int neighborsProc)
+PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int neighborsProc)
 {
   int ret = 0;
 
@@ -686,269 +686,222 @@ PccPointCloud::load(string inFile, bool isNormal, int dropDuplicates, int neighb
   if ( checkFile( inFile ) != 0 )
     return -1;
 
-  if ( !isNormal )              // Load non-normal data
+  // Make sure (x,y,z) available and determine the float type
+  iPos[0] = checkField( inFile, "x", "float", "float32", "float64", "double" );
+  iPos[1] = checkField( inFile, "y", "float", "float32", "float64", "double" );
+  iPos[2] = checkField( inFile, "z", "float", "float32", "float64", "double" );
+  if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
+    return -1;
+  xyz.init(size, iPos[0], iPos[1], iPos[2]);
+  bXyz = true;
+
+  // Optional normals (nx,ny,nz)
+  iPos[0] = checkField( inFile, "nx", "float", "float32", "float64", "double" );
+  iPos[1] = checkField( inFile, "ny", "float", "float32", "float64", "double" );
+  iPos[2] = checkField( inFile, "nz", "float", "float32", "float64", "double" );
+  if ( iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 ) {
+    normal.init(size, iPos[0], iPos[1], iPos[2]);
+    bNormal = true;
+  }
+
+  if (normalsOnly && !bNormal)
+    return -1;
+
+  // Make sure (r,g,b) available and determine the float type
+  iPos[0] = checkField( inFile, "red",   "uint8", "uchar" );
+  iPos[1] = checkField( inFile, "green", "uint8", "uchar" );
+  iPos[2] = checkField( inFile, "blue",  "uint8", "uchar" );
+  if ( !normalsOnly && iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 )
   {
-    // Make sure (x,y,z) available and determine the float type
-    iPos[0] = checkField( inFile, "x", "float", "float32", "float64", "double" );
-    iPos[1] = checkField( inFile, "y", "float", "float32", "float64", "double" );
-    iPos[2] = checkField( inFile, "z", "float", "float32", "float64", "double" );
-    if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
+    rgb.init(size, iPos[0], iPos[1], iPos[2]);
+    bRgb = true;
+  }
+
+  // Make sure (lidar) available and determine the integer type
+  iPos[0] = checkField( inFile, "reflectance", "uint16", "uint8" );
+  if ( !normalsOnly && iPos[0] < 0 )
+    iPos[0] = checkField( inFile, "refc", "uint16", "uint8" );
+
+  if ( iPos[0] >= 0 )
+  {
+    lidar.init(size, iPos[0]);
+    bLidar = true;
+  }
+
+  // Load regular data (rather than normals)
+  ifstream in;
+
+  if (fileFormat == 0)
+  {
+    in.open(inFile, ifstream::in);
+#if _WIN32
+    if (seekAscii(in) != 0)
+    {
+      cout << "Check the file header section. Incompatible header!" << endl;
+      in.close();
       return -1;
-    xyz.init(size, iPos[0], iPos[1], iPos[2]);
-    bXyz = true;
-
-    // Make sure (r,g,b) available and determine the float type
-    iPos[0] = checkField( inFile, "red",   "uint8", "uchar" );
-    iPos[1] = checkField( inFile, "green", "uint8", "uchar" );
-    iPos[2] = checkField( inFile, "blue",  "uint8", "uchar" );
-    if ( iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 )
-    {
-      rgb.init(size, iPos[0], iPos[1], iPos[2]);
-      bRgb = true;
     }
-
-    // Make sure (lidar) available and determine the integer type
-    iPos[0] = checkField( inFile, "reflectance", "uint16", "uint8" );
-    if ( iPos[0] < 0 )
-      iPos[0] = checkField( inFile, "refc", "uint16", "uint8" );
-
-    if ( iPos[0] >= 0 )
-    {
-      lidar.init(size, iPos[0]);
-      bLidar = true;
-    }
-
-    // Load regular data (rather than normals)
-    ifstream in;
-
-    if (fileFormat == 0)
-    {
-      in.open(inFile, ifstream::in);
-#if _WIN32
-      if (seekAscii(in) != 0)
-      {
-        cout << "Check the file header section. Incompatible header!" << endl;
-        in.close();
-        return -1;
-      }
 #else
-      in.seekg(dataPos);
+    in.seekg(dataPos);
 #endif
-    }
-    else if (fileFormat == 1)
-    {
-      in.open(inFile, ifstream::in | ifstream::binary);
+  }
+  else if (fileFormat == 1)
+  {
+    in.open(inFile, ifstream::in | ifstream::binary);
 #if _WIN32
-      if (seekBinary(in) != 0)
-      {
-        cout << "Check the file header section. Incompatible header!" << endl;
-        in.close();
-        return -1;
-      }
-#else
-      in.seekg(dataPos);
-#endif
+    if (seekBinary(in) != 0)
+    {
+      cout << "Check the file header section. Incompatible header!" << endl;
+      in.close();
+      return -1;
     }
+#else
+    in.seekg(dataPos);
+#endif
+  }
 
-    int duplicatesFound = 0;
-    long int i = 0; // position at which we insert the point.
-    struct dupAvg
+  int duplicatesFound = 0;
+  long int i = 0; // position at which we insert the point.
+  struct dupAvg
+  {
+    int idx; // unique-geometry point index.
+    int n;   // how many points we've seen with this geometry.
+    long cattr[3]; // sum colors.
+    long lattr; // sum lidar.
+  };
+
+  // x,y,z coords already seen, map to index and n.
+  std::map<PointXYZSet::point_type, struct dupAvg> coordsSeen;
+  decltype(coordsSeen)::iterator seen;
+
+  for (long int inputScan = 0; inputScan < size; inputScan++, i++)
+  {
+    if ( loadLine( in ) < 0 )   // Load the data into line memory
     {
-      int idx; // unique-geometry point index.
-      int n;   // how many points we've seen with this geometry.
-      long cattr[3]; // sum colors.
-      long lattr; // sum lidar.
-    };
+      ret = -1;
+      break;
+    }
+    xyz.loadPoints( this, i );
+    if (bNormal)
+      normal.loadPoints( this, i );
+    if (bRgb)
+      rgb.loadPoints( this, i );
+    if (bLidar)
+      lidar.loadPoints( this, i );
 
-    // x,y,z coords already seen, map to index and n.
-    std::map<PointXYZSet::point_type, struct dupAvg> coordsSeen;
-    decltype(coordsSeen)::iterator seen;
-
-    for (long int inputScan = 0; inputScan < size; inputScan++, i++)
+    if ((seen = coordsSeen.find(xyz.p[i])) != coordsSeen.end())
     {
-      if ( loadLine( in ) < 0 )   // Load the data into line memory
+      duplicatesFound++;
+      if (dropDuplicates == 2)
       {
-        ret = -1;
-        break;
-      }
-      xyz.loadPoints( this, i );
-      if (bRgb)
-        rgb.loadPoints( this, i );
-      if (bLidar)
-        lidar.loadPoints( this, i );
-
-      if ((seen = coordsSeen.find(xyz.p[i])) != coordsSeen.end())
-      {
-        duplicatesFound++;
-        if (dropDuplicates == 2)
-        {
-          // info for later average.
-          seen->second.n++;
-          if (bRgb)
-          {
-            seen->second.cattr[0] += rgb.c[i][0];
-            seen->second.cattr[1] += rgb.c[i][1];
-            seen->second.cattr[2] += rgb.c[i][2];
-          }
-          if (bLidar)
-          {
-            seen->second.lattr += lidar.reflectance[i];
-          }
-        }
-        if (dropDuplicates != 0)
-        {
-          // overwrite this last position.
-          i--; // loop will increment.
-          continue;
-        }
-      }
-      else
-      {
-        struct dupAvg avg;
-        avg.n = 1;
-        avg.idx = i;
+        // info for later average.
+        seen->second.n++;
         if (bRgb)
         {
-          avg.cattr[0] = rgb.c[i][0];
-          avg.cattr[1] = rgb.c[i][1];
-          avg.cattr[2] = rgb.c[i][2];
+          seen->second.cattr[0] += rgb.c[i][0];
+          seen->second.cattr[1] += rgb.c[i][1];
+          seen->second.cattr[2] += rgb.c[i][2];
         }
         if (bLidar)
         {
-          avg.lattr = lidar.reflectance[i];
+          seen->second.lattr += lidar.reflectance[i];
         }
-        coordsSeen.emplace(xyz.p[i], avg);
       }
-    }
-
-    in.close();
-
-    if (duplicatesFound > 0)
-    {
-      switch (dropDuplicates)
-      {
-      case 0:
-        printf("WARNING: %d points with same coordinates found\n",
-               duplicatesFound);
-        break;
-      case 1:
-        printf("WARNING: %d points with same coordinates found and dropped\n",
-               duplicatesFound);
-        break;
-      case 2:
-        // perform averaging.
-        for (auto const &scan: coordsSeen)
-        {
-          auto const &avg = scan.second;
-          if (bRgb)
-          {
-            rgb.c[avg.idx][0] = avg.cattr[0]/avg.n;
-            rgb.c[avg.idx][1] = avg.cattr[1]/avg.n;
-            rgb.c[avg.idx][2] = avg.cattr[2]/avg.n;
-          }
-          if (neighborsProc == 2)
-            xyz.nbdup[avg.idx] = avg.n;
-          if (bLidar)
-          {
-            lidar.reflectance[avg.idx] = avg.lattr/avg.n;
-          }
-        }
-        printf("WARNING: %d points with same coordinates found and averaged\n",
-               duplicatesFound);
-      }
-
       if (dropDuplicates != 0)
       {
-        // only unique points have been read, resize our cloud.
-        xyz.init(size-duplicatesFound, -1, -1, -1);
-        if (bRgb)
-          rgb.init(size-duplicatesFound, -1, -1, -1);
-        if (bLidar)
-          lidar.init(size-duplicatesFound, -1);
-        size -= duplicatesFound;
+        // overwrite this last position.
+        i--; // loop will increment.
+        continue;
       }
     }
+    else
+    {
+      struct dupAvg avg;
+      avg.n = 1;
+      avg.idx = i;
+      if (bRgb)
+      {
+        avg.cattr[0] = rgb.c[i][0];
+        avg.cattr[1] = rgb.c[i][1];
+        avg.cattr[2] = rgb.c[i][2];
+      }
+      if (bLidar)
+      {
+        avg.lattr = lidar.reflectance[i];
+      }
+      coordsSeen.emplace(xyz.p[i], avg);
+    }
+  }
+
+  in.close();
+
+  if (duplicatesFound > 0)
+  {
+    switch (dropDuplicates)
+    {
+    case 0:
+      printf("WARNING: %d points with same coordinates found\n",
+              duplicatesFound);
+      break;
+    case 1:
+      printf("WARNING: %d points with same coordinates found and dropped\n",
+              duplicatesFound);
+      break;
+    case 2:
+      // perform averaging.
+      for (auto const &scan: coordsSeen)
+      {
+        auto const &avg = scan.second;
+        if (bRgb)
+        {
+          rgb.c[avg.idx][0] = avg.cattr[0]/avg.n;
+          rgb.c[avg.idx][1] = avg.cattr[1]/avg.n;
+          rgb.c[avg.idx][2] = avg.cattr[2]/avg.n;
+        }
+        if (neighborsProc == 2)
+          xyz.nbdup[avg.idx] = avg.n;
+        if (bLidar)
+        {
+          lidar.reflectance[avg.idx] = avg.lattr/avg.n;
+        }
+      }
+      printf("WARNING: %d points with same coordinates found and averaged\n",
+              duplicatesFound);
+    }
+
+    if (dropDuplicates != 0)
+    {
+      // only unique points have been read, resize our cloud.
+      xyz.init(size-duplicatesFound, -1, -1, -1);
+      if (bRgb)
+        rgb.init(size-duplicatesFound, -1, -1, -1);
+      if (bLidar)
+        lidar.init(size-duplicatesFound, -1);
+      size -= duplicatesFound;
+    }
+  }
 
 #if 1
-    {
-      long int i = size - 1;
-      cout << "Verifying if the data is loaded correctly.. The last point is: ";
-      cout << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
-    }
+  {
+    long int i = size - 1;
+    cout << "Verifying if the data is loaded correctly.. The last point is: ";
+    cout << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
+  }
 #endif
 
 #if 0
-    {
-      ofstream outF;
-      outF.open( "testItPly.ply", ofstream::out );
-      for (long int i = 0; i < size; i++)
-      {
-        outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << " " << (unsigned short) rgb.c[i][0] << " " << (unsigned short) rgb.c[i][1] << " " << (unsigned short) rgb.c[i][2] << " " << lidar.reflectance[i] << endl;
-        // outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << " " << (unsigned short) rgb.c[i][0] << " " << (unsigned short) rgb.c[i][1] << " " << (unsigned short) rgb.c[i][2] << endl;
-        // outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
-      }
-      outF.close();
-    }
-#endif
-  }
-
-  else                          // load normal
   {
-    // Make sure (x,y,z) available and determine the float type
-    iPos[0] = checkField( inFile, "nx", "float", "float32", "float64", "double" );
-    iPos[1] = checkField( inFile, "ny", "float", "float32", "float64", "double" );
-    iPos[2] = checkField( inFile, "nz", "float", "float32", "float64", "double" );
-    if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
-      return -1;
-    normal.init(size, iPos[0], iPos[1], iPos[2]);
-    bNormal = true;
-
-    if (bNormal)
+    ofstream outF;
+    outF.open( "testItPly.ply", ofstream::out );
+    for (long int i = 0; i < size; i++)
     {
-      // Load normal data
-      ifstream in;
-
-      if (fileFormat == 0)
-      {
-        in.open(inFile, ifstream::in);
-#if _WIN32
-        if (seekAscii(in) != 0)
-        {
-          cout << "Check the file header section. Incompatible header!" << endl;
-          in.close();
-          return -1;
-        }
-#else
-        in.seekg(dataPos);
-#endif
-      }
-      else if (fileFormat == 1)
-      {
-        in.open(inFile, ifstream::in | ifstream::binary);
-#if _WIN32
-        if (seekBinary(in) != 0)
-        {
-          cout << "Check the file header section. Incompatible header!" << endl;
-          in.close();
-          return -1;
-        }
-#else
-        in.seekg(dataPos);
-#endif
-      }
-
-      for (long int i = 0; i < size; i++)
-      {
-        if ( loadLine( in ) < 0 )   // Load the data into line memory
-        {
-          ret = -1;
-          break;
-        }
-        normal.loadPoints( this, i );
-      }
-
-      in.close();
+      outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << " " << (unsigned short) rgb.c[i][0] << " " << (unsigned short) rgb.c[i][1] << " " << (unsigned short) rgb.c[i][2] << " " << lidar.reflectance[i] << endl;
+      // outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << " " << (unsigned short) rgb.c[i][0] << " " << (unsigned short) rgb.c[i][1] << " " << (unsigned short) rgb.c[i][2] << endl;
+      // outF << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
     }
+    outF.close();
   }
+#endif
+
   return ret;
 }

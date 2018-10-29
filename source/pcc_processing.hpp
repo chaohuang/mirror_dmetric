@@ -165,7 +165,7 @@ namespace pcc_processing {
 
     PccPointCloud();
     ~PccPointCloud();
-    int load( string inFile, bool isNormal = false, int dropDuplicates = 0, int neighborsProc = 0) ;
+    int load( string inFile, bool normalsOnly = false, int dropDuplicates = 0, int neighborsProc = 0) ;
   };
 
 };

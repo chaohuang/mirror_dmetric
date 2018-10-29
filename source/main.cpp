@@ -96,10 +96,6 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
     cPar.bLidar = vm["lidar"].as< bool >();
     cPar.resolution = vm["resolution"].as< float >();
 
-    if (cPar.normIn == "")
-      cPar.c2c_only = true;
-    else
-      cPar.c2c_only = false;
     // Safety check
 
     // Check whether your system is compatible with my assumptions
@@ -161,6 +157,9 @@ int main (int argc, char *argv[])
   PccPointCloud inCloud2;
   PccPointCloud inNormal1;
 
+  // Normals may come from either a seperate file, or from file1(a).
+  PccPointCloud* pNormal1 = &inCloud1;
+
   if (inCloud1.load(cPar.file1, false, cPar.dropDuplicates, cPar.neighborsProc))
   {
     cout << "Error reading reference point cloud:" << cPar.file1 << endl;
@@ -168,7 +167,13 @@ int main (int argc, char *argv[])
   }
   cout << "Reading file 1 done." << endl;
 
-  if (cPar.normIn != "")
+  // NB: no need to load the normals again if they will be loaded from a
+  //     previously loaded file.
+  if (cPar.file1 == cPar.normIn && inCloud1.bNormal)
+  {
+    cout << "Normals loaded from file1." << endl;
+  }
+  else if (cPar.normIn != "")
   {
     if (inNormal1.load(cPar.normIn, true, cPar.dropDuplicates))
     {
@@ -176,7 +181,11 @@ int main (int argc, char *argv[])
       return -1;
     }
     cout << "Reading normal 1 done." << endl;
+    pNormal1 = &inNormal1;
   }
+
+  // If no normals are available, can't do plane2plane
+  cPar.c2c_only = !pNormal1->bNormal;
 
   if (cPar.file2 != "")
   {
@@ -191,7 +200,7 @@ int main (int argc, char *argv[])
   // compute the point to plane distances, as well as point to point distances
   const int t0 = GetTickCount();
   qMetric qm;
-  computeQualityMetric(inCloud1, inNormal1, inCloud2, cPar, qm);
+  computeQualityMetric(inCloud1, *pNormal1, inCloud2, cPar, qm);
 
   const int t1 = GetTickCount();
   cout << "Job done! " << (t1 - t0) * 1e-3 << " seconds elapsed (excluding the time to load the point clouds)." << endl;

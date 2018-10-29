@@ -182,7 +182,7 @@ getPSNR(float dist2, float p, float factor = 1.0)
  *   Dong Tian, MERL
  */
 void
-scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud &cloudNormalsB)
+scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud &cloudNormalsB)
 {
   // Prepare the buffer to compute the average normals
 #if PRINT_TIMING
@@ -194,13 +194,13 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
 
   if (1) {
     my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
-    for (long i = 0; i < cloudA.size; i++)
+    for (long i = 0; i < cloudNormalsA.size; i++)
     {
       const size_t num_results = 1;
       std::array<index_type,num_results> indices;
       std::array<distance_type,num_results> sqrDist;
 
-      mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
+      mat_indexB.query(&cloudNormalsA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
       cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
       cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
@@ -210,7 +210,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
   }
 
   // average now
-  my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
+  my_kd_tree_t mat_indexA(3, cloudNormalsA.xyz.p, 10); // dim, cloud, max leaf
   for (long i = 0; i < cloudB.size; i++)
   {
     int nCount = counts[i];
@@ -676,7 +676,7 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
   // Based on normals on original point cloud, derive normals on reconstructed point cloud
   PccPointCloud cloudNormalsB;
   if (!cPar.c2c_only)
-    scaleNormals( cloudA, cloudNormalsA, cloudB, cloudNormalsB );
+    scaleNormals( cloudNormalsA, cloudB, cloudNormalsB );
   cout << "Normals prepared." << endl;
   cout << endl;
 

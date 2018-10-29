@@ -101,10 +101,8 @@ PointXYZSet::init( long int size, int i0, int i1, int i2 )
     idxInLine[2] = i2;
 
   p.resize( size );
-#if DUPLICATECOLORS
   nbdup.resize( size );
   std::fill(nbdup.begin(), nbdup.end(), 1);
-#endif
 }
 
 /**!
@@ -668,15 +666,7 @@ PccPointCloud::seekBinary(ifstream &in)
  *  Dong Tian <tian@merl.com>
  */
 int
-#if DUPLICATEHANDLING
-#if DUPLICATECOLORS
 PccPointCloud::load(string inFile, bool isNormal, int dropDuplicates, int neighborsProc)
-#else
-PccPointCloud::load(string inFile, bool isNormal, int dropDuplicates)
-#endif
-#else
-PccPointCloud::load( string inFile, bool isNormal )
-#endif
 {
   int ret = 0;
 
@@ -760,7 +750,6 @@ PccPointCloud::load( string inFile, bool isNormal )
 #endif
     }
 
-#if DUPLICATEHANDLING
     int duplicatesFound = 0;
     long int i = 0; // position at which we insert the point.
     struct dupAvg
@@ -776,9 +765,6 @@ PccPointCloud::load( string inFile, bool isNormal )
     decltype(coordsSeen)::iterator seen;
 
     for (long int inputScan = 0; inputScan < size; inputScan++, i++)
-#else
-    for (long int i = 0; i < size; i++)
-#endif
     {
       if ( loadLine( in ) < 0 )   // Load the data into line memory
       {
@@ -791,7 +777,6 @@ PccPointCloud::load( string inFile, bool isNormal )
       if (bLidar)
         lidar.loadPoints( this, i );
 
-#if DUPLICATEHANDLING
       if ((seen = coordsSeen.find(xyz.p[i])) != coordsSeen.end())
       {
         duplicatesFound++;
@@ -834,12 +819,10 @@ PccPointCloud::load( string inFile, bool isNormal )
         }
         coordsSeen.emplace(xyz.p[i], avg);
       }
-#endif
     }
 
     in.close();
 
-#if DUPLICATEHANDLING
     if (duplicatesFound > 0)
     {
       switch (dropDuplicates)
@@ -863,9 +846,8 @@ PccPointCloud::load( string inFile, bool isNormal )
             rgb.c[avg.idx][1] = avg.cattr[1]/avg.n;
             rgb.c[avg.idx][2] = avg.cattr[2]/avg.n;
           }
-#if DUPLICATECOLORS
-          if (neighborsProc == 2) xyz.nbdup[avg.idx] = avg.n;
-#endif
+          if (neighborsProc == 2)
+            xyz.nbdup[avg.idx] = avg.n;
           if (bLidar)
           {
             lidar.reflectance[avg.idx] = avg.lattr/avg.n;
@@ -886,7 +868,6 @@ PccPointCloud::load( string inFile, bool isNormal )
         size -= duplicatesFound;
       }
     }
-#endif
 
 #if 1
     {

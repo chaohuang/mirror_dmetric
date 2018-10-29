@@ -48,17 +48,7 @@
 #include <mutex>
 #include <vector>
 
-#define DUPLICATEHANDLING 1
-#if DUPLICATEHANDLING
-#define DUPLICATECOLORS 1
-#if DUPLICATECOLORS
 #define DUPLICATECOLORS_DEBUG 0 // 0 or 1
-#else
-#define DUPLICATECOLORS_DEBUG 0 // Must to be 0
-#endif
-#else
-#define DUPLICATECOLORS 0 // Must to be 0
-#endif
 
 using namespace std;
 
@@ -80,9 +70,7 @@ namespace pcc_processing {
   public:
     typedef std::array<float, 3> point_type;
     vector<point_type> p;
-#if DUPLICATECOLORS
     vector< int > nbdup;
-#endif
     PointXYZSet() {};
     ~PointXYZSet();
     virtual int loadPoints( PccPointCloud *pPcc, long int idx );
@@ -177,15 +165,7 @@ namespace pcc_processing {
 
     PccPointCloud();
     ~PccPointCloud();
-#if DUPLICATEHANDLING
-#if DUPLICATECOLORS
     int load( string inFile, bool isNormal = false, int dropDuplicates = 0, int neighborsProc = 0) ;
-#else
-    int load( string inFile, bool isNormal = false, int dropDuplicates = 0) ;
-#endif
-#else
-    int load( string inFile, bool isNormal = false );
-#endif
   };
 
 };

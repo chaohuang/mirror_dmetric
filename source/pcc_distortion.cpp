@@ -313,17 +313,11 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
 
-#if DUPLICATECOLORS
-#define NUM_RESULTS 10
-    const size_t num_results = NUM_RESULTS;
+  const size_t num_results = 10;
 #if DUPLICATECOLORS_DEBUG
-    long NbNeighborsDst[NUM_RESULTS];
-    for (long i = 0; i < NUM_RESULTS; i++)
-      NbNeighborsDst[i] = 0;
+  long NbNeighborsDst[num_results] = {};
 #endif
-#else
-    const size_t num_results = 1;
-#endif
+
 #pragma omp parallel for
   for (long i = 0; i < cloudA.size; i++)
   {
@@ -336,7 +330,6 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       cout << " WARNING: requested neighbors could not be found " << endl;
     }
 
-#if DUPLICATECOLORS
     struct SameDistRgb {
       RGBSet::value_type rgb;
       size_t index;
@@ -358,7 +351,6 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
           break;
       }
     }
-#endif
 
     int j = indices[0];
     if (j < 0)
@@ -399,7 +391,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       float in[3];
 
       convertRGBtoYUV_BT709(cloudA.rgb.c[i], in);
-#if DUPLICATECOLORS
+
       if (cPar.neighborsProc)
       {
         unsigned int r = 0, g = 0, b = 0;
@@ -472,7 +464,6 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
         distColorRGB[2] = (cloudA.rgb.c[i][2] - color[2]) * (cloudA.rgb.c[i][2] - color[2]);
       }
       else
-#endif
       {
         convertRGBtoYUV_BT709(cloudB.rgb.c[j], out);
         distColorRGB[0] = (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]) * (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]);
@@ -602,12 +593,8 @@ commandPar::commandPar()
   bLidar = false;
 
   resolution = 0.0;
-#if DUPLICATEHANDLING
   dropDuplicates = 0;
-#endif
-#if DUPLICATECOLORS
   neighborsProc = 0;
-#endif
 }
 
 /**!
@@ -704,12 +691,11 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     cout << "WARNING: no reflectance property in input files, disabling reflectance metrics.\n";
     cPar.bLidar = false;
   }
-#if DUPLICATECOLORS
+
   if (cPar.bLidar && cPar.neighborsProc)
   {
     cout << "WARNING: reflectance metrics are computed without neighborsProc parameter.\n";
   }
-#endif
 
   // Use "a" as reference
   cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";

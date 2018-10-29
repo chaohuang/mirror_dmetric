@@ -760,21 +760,7 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
 #endif
   }
 
-  int duplicatesFound = 0;
-  long int i = 0; // position at which we insert the point.
-  struct dupAvg
-  {
-    int idx; // unique-geometry point index.
-    int n;   // how many points we've seen with this geometry.
-    long cattr[3]; // sum colors.
-    long lattr; // sum lidar.
-  };
-
-  // x,y,z coords already seen, map to index and n.
-  std::map<PointXYZSet::point_type, struct dupAvg> coordsSeen;
-  decltype(coordsSeen)::iterator seen;
-
-  for (long int inputScan = 0; inputScan < size; inputScan++, i++)
+  for (long int i = 0; i < size; i++)
   {
     if ( loadLine( in ) < 0 )   // Load the data into line memory
     {
@@ -788,52 +774,84 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
       rgb.loadPoints( this, i );
     if (bLidar)
       lidar.loadPoints( this, i );
+  }
+  in.close();
 
-    if ((seen = coordsSeen.find(xyz.p[i])) != coordsSeen.end())
-    {
-      duplicatesFound++;
-      if (dropDuplicates == 2)
-      {
-        // info for later average.
-        seen->second.n++;
-        if (bRgb)
-        {
-          seen->second.cattr[0] += rgb.c[i][0];
-          seen->second.cattr[1] += rgb.c[i][1];
-          seen->second.cattr[2] += rgb.c[i][2];
-        }
-        if (bLidar)
-        {
-          seen->second.lattr += lidar.reflectance[i];
-        }
+#if 1
+  if (1)
+  {
+    long int i = size - 1;
+    cout << "Verifying if the data is loaded correctly.. The last point is: ";
+    cout << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
+  }
+#endif
+
+  // sort the point cloud
+  std::sort(this->begin(), this->end());
+
+  // Find runs of identical point positions
+  int duplicatesFound = 0;
+  for (auto it_seq = this->begin(); it_seq != this->end(); ) {
+    it_seq = std::adjacent_find(it_seq, this->end());
+    if (it_seq == this->end())
+      break;
+
+    // accumulators for averaging attribute values
+    long cattr[3] {}; // sum colors.
+    long lattr {}; // sum lidar.
+
+    // iterate over the duplicate points, accumulating values
+    int count = 0;
+    auto it = it_seq;
+    for (; *it == *it_seq; ++it) {
+      count++;
+      int idx = it.idx;
+      if (bRgb) {
+        cattr[0] += rgb.c[idx][0];
+        cattr[1] += rgb.c[idx][1];
+        cattr[2] += rgb.c[idx][2];
       }
-      if (dropDuplicates != 0)
-      {
-        // overwrite this last position.
-        i--; // loop will increment.
-        continue;
-      }
-    }
-    else
-    {
-      struct dupAvg avg;
-      avg.n = 1;
-      avg.idx = i;
-      if (bRgb)
-      {
-        avg.cattr[0] = rgb.c[i][0];
-        avg.cattr[1] = rgb.c[i][1];
-        avg.cattr[2] = rgb.c[i][2];
-      }
+
       if (bLidar)
-      {
-        avg.lattr = lidar.reflectance[i];
-      }
-      coordsSeen.emplace(xyz.p[i], avg);
+        lattr += lidar.reflectance[idx];
     }
+
+    // count the extra points, not number of identical points
+    duplicatesFound += count - 1;
+
+    int first_idx = it_seq.idx;
+    it_seq = it;
+
+    // averaging case only
+    if (dropDuplicates != 2)
+      continue;
+
+    if (bRgb) {
+      rgb.c[first_idx][0] = cattr[0] / count;
+      rgb.c[first_idx][1] = cattr[1] / count;
+      rgb.c[first_idx][2] = cattr[2] / count;
+    }
+
+    if (neighborsProc == 2)
+      xyz.nbdup[first_idx] = count;
+
+    if (bLidar)
+      lidar.reflectance[first_idx] = lattr / count;
   }
 
-  in.close();
+  if (dropDuplicates != 0) {
+    auto last = std::unique(this->begin(), this->end());
+
+    // todo(): this init call looks like a bug, overwriting ndups.
+    xyz.init(size - duplicatesFound, -1, -1, -1);
+    if (bNormal)
+      normal.init(size - duplicatesFound, -1, -1, -1);
+    if (bRgb)
+      rgb.init(size - duplicatesFound, -1, -1, -1);
+    if (bLidar)
+      lidar.init(size - duplicatesFound, -1);
+    size -= duplicatesFound;
+  }
 
   if (duplicatesFound > 0)
   {
@@ -848,46 +866,10 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
               duplicatesFound);
       break;
     case 2:
-      // perform averaging.
-      for (auto const &scan: coordsSeen)
-      {
-        auto const &avg = scan.second;
-        if (bRgb)
-        {
-          rgb.c[avg.idx][0] = avg.cattr[0]/avg.n;
-          rgb.c[avg.idx][1] = avg.cattr[1]/avg.n;
-          rgb.c[avg.idx][2] = avg.cattr[2]/avg.n;
-        }
-        if (neighborsProc == 2)
-          xyz.nbdup[avg.idx] = avg.n;
-        if (bLidar)
-        {
-          lidar.reflectance[avg.idx] = avg.lattr/avg.n;
-        }
-      }
       printf("WARNING: %d points with same coordinates found and averaged\n",
               duplicatesFound);
     }
-
-    if (dropDuplicates != 0)
-    {
-      // only unique points have been read, resize our cloud.
-      xyz.init(size-duplicatesFound, -1, -1, -1);
-      if (bRgb)
-        rgb.init(size-duplicatesFound, -1, -1, -1);
-      if (bLidar)
-        lidar.init(size-duplicatesFound, -1);
-      size -= duplicatesFound;
-    }
   }
-
-#if 1
-  {
-    long int i = size - 1;
-    cout << "Verifying if the data is loaded correctly.. The last point is: ";
-    cout << xyz.p[i][0] << " " << xyz.p[i][1] << " " << xyz.p[i][2] << endl;
-  }
-#endif
 
 #if 0
   {

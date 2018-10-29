@@ -197,25 +197,25 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
     vecMap[i].clear();
   }
 
-  my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
-  my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
+  if (1) {
+    my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
+    for (long i = 0; i < cloudA.size; i++)
+    {
+      const size_t num_results = 1;
+      std::array<index_type,num_results> indices;
+      std::array<distance_type,num_results> sqrDist;
 
-  for (long i = 0; i < cloudA.size; i++)
-  {
+      mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
 
-    const size_t num_results = 1;
-    std::array<index_type,num_results> indices;
-    std::array<distance_type,num_results> sqrDist;
-
-    mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
-
-    cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
-    cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
-    cloudNormalsB.normal.n[indices[0]][2] += cloudNormalsA.normal.n[i][2];
-    vecMap[ indices[0] ].push_back( i );
+      cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
+      cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
+      cloudNormalsB.normal.n[indices[0]][2] += cloudNormalsA.normal.n[i][2];
+      vecMap[ indices[0] ].push_back( i );
+    }
   }
 
   // average now
+  my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
   for (long i = 0; i < cloudB.size; i++)
   {
     int nCount = vecMap[i].size();

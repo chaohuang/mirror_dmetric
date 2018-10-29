@@ -190,12 +190,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
 #endif
 
   cloudNormalsB.normal.init(cloudB.size);
-  vector< vector<int> > vecMap( cloudB.size );
-
-  for (long i = 0; i < cloudB.size; i++)
-  {
-    vecMap[i].clear();
-  }
+  vector<int> counts(cloudB.size);
 
   if (1) {
     my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
@@ -210,7 +205,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
       cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
       cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
       cloudNormalsB.normal.n[indices[0]][2] += cloudNormalsA.normal.n[i][2];
-      vecMap[ indices[0] ].push_back( i );
+      counts[indices[0]]++;
     }
   }
 
@@ -218,7 +213,7 @@ scaleNormals(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud 
   my_kd_tree_t mat_indexA(3, cloudA.xyz.p, 10); // dim, cloud, max leaf
   for (long i = 0; i < cloudB.size; i++)
   {
-    int nCount = vecMap[i].size();
+    int nCount = counts[i];
     if (nCount > 0)      // main branch
     {
       cloudNormalsB.normal.n[i][0] = cloudNormalsB.normal.n[i][0] / nCount;

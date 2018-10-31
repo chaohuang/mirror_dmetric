@@ -125,12 +125,12 @@ PointXYZSet::loadPoints( PccPointCloud *pPcc, long int idx )
   if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::FLOAT32 )
   {
     for (int i = 0; i < 3; i++)
-      p[idx][i] = *(float*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[i] ]);
+      p[idx][i] = *(float*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
   }
   else if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::FLOAT64 )
   {
     for (int i = 0; i < 3; i++)
-      p[idx][i] = *(double*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[i] ]);
+      p[idx][i] = *(double*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
   }
   else
   {
@@ -179,7 +179,7 @@ RGBSet::loadPoints( PccPointCloud *pPcc, long int idx )
   if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::UINT8 )
   {
     for (int i = 0; i < 3; i++)
-      c[idx][i] = *(unsigned char*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[i] ]);
+      c[idx][i] = *(unsigned char*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
   }
   else
   {
@@ -232,7 +232,7 @@ NormalSet::loadPoints( PccPointCloud *pPcc, long int idx )
   if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::FLOAT32 )
   {
     for (int i = 0; i < 3; i++)
-      n[idx][i] = *(float*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[i] ]);
+      n[idx][i] = *(float*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
   }
   else
   {
@@ -268,11 +268,11 @@ LidarSet::loadPoints( PccPointCloud *pPcc, long int idx )
 {
   if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::UINT16 )
   {
-    reflectance[ idx ] = *(unsigned short*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[0] ]);
+    reflectance[ idx ] = *(unsigned short*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[0] ]);
   }
   else if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::UINT8 )
   {
-    reflectance[ idx ] = *(unsigned char*)(pPcc->lineMem + pPcc->fieldPos[ idxInLine[0] ]);
+    reflectance[ idx ] = *(unsigned char*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[0] ]);
   }
   else
   {
@@ -295,8 +295,6 @@ PccPointCloud::PccPointCloud()
 {
   size = 0;
   fileFormat = -1;
-  memset( fieldType, 0, sizeof(int)*MAX_NUM_FIELDS );
-  memset( fieldPos,  0, sizeof(int)*MAX_NUM_FIELDS );
   fieldNum = 0;
   dataPos = 0;
   lineNum = 0;
@@ -372,37 +370,37 @@ PccPointCloud::checkFile(string fileName)
       }
       else if ( str[0] == "property" && secIdx == 1 && str[1] != "list" )
       {
-        fieldPos[fieldNum] = fieldSize;
+        fieldPos.push_back(fieldSize);
         if ( str[1] == "uint8" || str[1] == "uchar" ) {
-          fieldType[fieldNum] = PointFieldTypes::UINT8;
+          fieldType.push_back(PointFieldTypes::UINT8);
           fieldSize += sizeof(unsigned char);
         }
         else if ( str[1] == "int8" || str[1] == "char" ) {
-          fieldType[fieldNum] = PointFieldTypes::INT16;
+          fieldType.push_back(PointFieldTypes::INT16);
           fieldSize += sizeof(char);
         }
         else if ( str[1] == "uint16" || str[1] == "ushort" ) {
-          fieldType[fieldNum] = PointFieldTypes::UINT16;
+          fieldType.push_back(PointFieldTypes::UINT16);
           fieldSize += sizeof(unsigned short);
         }
         else if ( str[1] == "int16" || str[1] == "short" ) {
-          fieldType[fieldNum] = PointFieldTypes::INT16;
+          fieldType.push_back(PointFieldTypes::INT16);
           fieldSize += sizeof(short);
         }
         else if ( str[1] == "uint" || str[1] == "uint32" ) {
-          fieldType[fieldNum] = PointFieldTypes::UINT32;
+          fieldType.push_back(PointFieldTypes::UINT32);
           fieldSize += sizeof(unsigned int);
         }
         else if ( str[1] == "int" || str[1] == "int32" ) {
-          fieldType[fieldNum] = PointFieldTypes::INT32;
+          fieldType.push_back(PointFieldTypes::INT32);
           fieldSize += sizeof(int);
         }
         else if ( str[1] == "float" || str[1] == "float32" ) {
-          fieldType[fieldNum] = PointFieldTypes::FLOAT32;
+          fieldType.push_back(PointFieldTypes::FLOAT32);
           fieldSize += sizeof(float);
         }
         else if ( str[1] == "float64" || str[1] == "double" ) {
-          fieldType[fieldNum] = PointFieldTypes::FLOAT64;
+          fieldType.push_back(PointFieldTypes::FLOAT64);
           fieldSize += sizeof(double);
         }
         else {
@@ -426,6 +424,8 @@ PccPointCloud::checkFile(string fileName)
 #endif
 
   in.close();
+
+  lineMem.reset(new unsigned char[fieldNum * sizeof(double)]);
 
   if (bPly && fileFormat >= 0 && fieldNum > 0 && size > 0 && bEnd)
     return 0;
@@ -529,28 +529,28 @@ PccPointCloud::loadLine( ifstream &in )
       switch (fieldType[i])
       {
       case PointFieldTypes::UINT8:
-        in >> ((unsigned short*)(lineMem+fieldPos[i]))[0]; // @DT: tricky. not using uint8 when reading
+        in >> ((unsigned short*)(lineMem.get()+fieldPos[i]))[0]; // @DT: tricky. not using uint8 when reading
         break;
       case PointFieldTypes::INT8:
-        in >> ((short*)(lineMem+fieldPos[i]))[0];
+        in >> ((short*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::UINT16:
-        in >> ((unsigned short*)(lineMem+fieldPos[i]))[0];
+        in >> ((unsigned short*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::INT16:
-        in >> ((short*)(lineMem+fieldPos[i]))[0];
+        in >> ((short*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::UINT32:
-        in >> ((unsigned int*)(lineMem+fieldPos[i]))[0];
+        in >> ((unsigned int*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::INT32:
-        in >> ((int*)(lineMem+fieldPos[i]))[0];
+        in >> ((int*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::FLOAT32:
-        in >> ((float*)(lineMem+fieldPos[i]))[0];
+        in >> ((float*)(lineMem.get()+fieldPos[i]))[0];
         break;
       case PointFieldTypes::FLOAT64:
-        in >> ((double*)(lineMem+fieldPos[i]))[0];
+        in >> ((double*)(lineMem.get()+fieldPos[i]))[0];
         break;
       default:
         cout << "Unknown field type: " << fieldType[i] << endl;
@@ -566,28 +566,28 @@ PccPointCloud::loadLine( ifstream &in )
       switch (fieldType[i])
       {
       case PointFieldTypes::UINT8:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(unsigned char));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(unsigned char));
         break;
       case PointFieldTypes::INT8:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(char));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(char));
         break;
       case PointFieldTypes::UINT16:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(unsigned short));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(unsigned short));
         break;
       case PointFieldTypes::INT16:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(short));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(short));
         break;
       case PointFieldTypes::UINT32:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(unsigned int));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(unsigned int));
         break;
       case PointFieldTypes::INT32:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(int));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(int));
         break;
       case PointFieldTypes::FLOAT32:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(float));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(float));
         break;
       case PointFieldTypes::FLOAT64:
-        in.read((char*)(lineMem+fieldPos[i]), sizeof(double));
+        in.read((char*)(lineMem.get()+fieldPos[i]), sizeof(double));
         break;
       default:
         cout << "Unknown field type: " << fieldType[i] << endl;

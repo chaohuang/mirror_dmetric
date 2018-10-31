@@ -43,8 +43,9 @@
 
 #include <iostream>
 #include <fstream>
-#include <vector>
+#include <memory>
 #include <mutex>
+#include <vector>
 
 #define DUPLICATEHANDLING 1
 #if DUPLICATEHANDLING
@@ -64,7 +65,6 @@ namespace pcc_processing {
 
   class PccPointCloud;
 
-#define MAX_NUM_FIELDS 24
   class PointBaseSet
   {
   public:
@@ -144,13 +144,13 @@ namespace pcc_processing {
 
     long int size;                 //! The number of points
     int fileFormat;                //! 0: ascii. 1: binary_little_endian
-    int fieldType[MAX_NUM_FIELDS]; //! The field type
-    int fieldPos [MAX_NUM_FIELDS]; //! The field position in the line memory
+    std::vector<int> fieldType;    //! The field type
+    std::vector<int> fieldPos;     //! The field position in the line memory
     int fieldNum;                  //! The number of field available
     int fieldSize;                 //! The memory size of the used fields
     int dataPos;                   //! The file pointer to the beginning of data
     int lineNum;                   //! The number of lines of header section
-    unsigned char lineMem[MAX_NUM_FIELDS*sizeof(double)];
+    std::unique_ptr<unsigned char[]> lineMem;
 
     int checkFile( string fileName );
     int checkField( string fileName, string fieldName, string fieldType1, string fieldType2 = "None", string fieldType3 = "None", string fieldType4 = "None" );

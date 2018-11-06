@@ -127,7 +127,6 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
       // cerr << "       Distances = " << sqrDist[0] << ", " << sqrDist[1] << endl;
       // cerr << "  Some points are repeated!" << endl;
     }
-
     else
     {
       // Use the second one. assume the first one is the current point
@@ -313,28 +312,32 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
 
-  const size_t num_results = 10;
+    const size_t num_results_max  = 30;
+    const size_t num_results_incr = 5;
 #if DUPLICATECOLORS_DEBUG
-  long NbNeighborsDst[num_results] = {};
+  long NbNeighborsDst[num_results_max] = {};
 #endif
 
 #pragma omp parallel for
   for (long i = 0; i < cloudA.size; i++)
   {
+    size_t num_results = num_results_incr;
     // For point 'i' in A, find its nearest neighbor in B. store it in 'j'
-    std::array<index_type,num_results> indices;
-    std::array<distance_type,num_results> sqrDist;
-
-    if (!mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]))
-    {
-      cout << " WARNING: requested neighbors could not be found " << endl;
-    }
+    std::array<index_type,num_results_max> indices;
+    std::array<distance_type,num_results_max> sqrDist;
+    do {
+      num_results += num_results_incr;
+      if (!mat_indexB.query(&cloudA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]))
+      {
+        cout << " WARNING: requested neighbors could not be found " << endl;
+      }
+    } while( sqrDist[0] == sqrDist[num_results-1] && num_results + num_results_incr <= num_results_max );
 
     struct SameDistRgb {
       RGBSet::value_type rgb;
       size_t index;
     };
-    std::array<SameDistRgb,num_results> sameDistRgb;
+    std::array<SameDistRgb,num_results_max> sameDistRgb;
     int numSameDistRgb = 0;
 
     if (cPar.bColor)
@@ -408,9 +411,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
           {
             const auto& value = sameDistRgb[n];
             int nbdup = cloudB.xyz.nbdup[value.index];
-            r += nbdup*value.rgb[0];
-            g += nbdup*value.rgb[1];
-            b += nbdup*value.rgb[2];
+            r += nbdup * value.rgb[0];
+            g += nbdup * value.rgb[1];
+            b += nbdup * value.rgb[2];
             nbdupcumul += nbdup;
           }
           assert(nbdupcumul);

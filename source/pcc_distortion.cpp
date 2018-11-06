@@ -181,7 +181,7 @@ getPSNR(float dist2, float p, float factor = 1.0)
  *   Dong Tian, MERL
  */
 void
-scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud &cloudNormalsB)
+scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud &cloudNormalsB, bool bAverageNormals)
 {
   // Prepare the buffer to compute the average normals
 #if PRINT_TIMING
@@ -195,16 +195,32 @@ scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud 
     my_kd_tree_t mat_indexB(3, cloudB.xyz.p, 10); // dim, cloud, max leaf
     for (long i = 0; i < cloudNormalsA.size; i++)
     {
-      const size_t num_results = 1;
-      std::array<index_type,num_results> indices;
-      std::array<distance_type,num_results> sqrDist;
+      const size_t num_results_max = 30;
+      const size_t num_results_incr = 5;
+      size_t num_results = 0;
 
-      mat_indexB.query(&cloudNormalsA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
+      std::array<index_type,num_results_max> indices;
+      std::array<distance_type,num_results_max> sqrDist;
+      do {
+        num_results  += num_results_incr;
+        mat_indexB.query(&cloudNormalsA.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
+      } while( sqrDist[0] == sqrDist[num_results-1] && num_results + num_results_incr <= num_results_max );
 
-      cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
-      cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
-      cloudNormalsB.normal.n[indices[0]][2] += cloudNormalsA.normal.n[i][2];
-      counts[indices[0]]++;
+      if( bAverageNormals ) {
+        for( size_t j=0;j<num_results;j++){
+          if( sqrDist[0] == sqrDist[j] ) {
+            cloudNormalsB.normal.n[indices[j]][0] += cloudNormalsA.normal.n[i][0];
+            cloudNormalsB.normal.n[indices[j]][1] += cloudNormalsA.normal.n[i][1];
+            cloudNormalsB.normal.n[indices[j]][2] += cloudNormalsA.normal.n[i][2];
+            counts[indices[j]]++;
+          }
+        }
+      } else {
+        cloudNormalsB.normal.n[indices[0]][0] += cloudNormalsA.normal.n[i][0];
+        cloudNormalsB.normal.n[indices[0]][1] += cloudNormalsA.normal.n[i][1];
+        cloudNormalsB.normal.n[indices[0]][2] += cloudNormalsA.normal.n[i][2];
+        counts[indices[0]]++;
+      }
     }
   }
 
@@ -221,15 +237,33 @@ scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud 
     }
     else
     {
-      const size_t num_results = 1;
-      std::array<index_type,num_results> indices;
-      std::array<distance_type,num_results> sqrDist;
-
-      mat_indexA.query(&cloudB.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
-
-      cloudNormalsB.normal.n[i][0] = cloudNormalsA.normal.n[indices[0]][0];
-      cloudNormalsB.normal.n[i][1] = cloudNormalsA.normal.n[indices[0]][1];
-      cloudNormalsB.normal.n[i][2] = cloudNormalsA.normal.n[indices[0]][2];
+      const size_t num_results_max = 30;
+      const size_t num_results_incr = 5;
+      size_t num_results = 0;
+      std::array<index_type,num_results_max> indices;
+      std::array<distance_type,num_results_max> sqrDist;
+      do {
+        num_results  += num_results_incr;
+        mat_indexA.query(&cloudB.xyz.p[i][0], num_results, &indices[0], &sqrDist[0]);
+      } while( sqrDist[0] == sqrDist[num_results-1] && num_results + num_results_incr <= num_results_max );
+      if( bAverageNormals ) {
+        size_t num = 0;
+        for( size_t j=0;j<num_results;j++){
+          if( sqrDist[0] == sqrDist[j] ) {
+            cloudNormalsB.normal.n[i][0] += cloudNormalsA.normal.n[indices[j]][0];
+            cloudNormalsB.normal.n[i][1] += cloudNormalsA.normal.n[indices[j]][1];
+            cloudNormalsB.normal.n[i][2] += cloudNormalsA.normal.n[indices[j]][2];
+            num++;
+          }
+        }
+        cloudNormalsB.normal.n[i][0] /= num;
+        cloudNormalsB.normal.n[i][1] /= num;
+        cloudNormalsB.normal.n[i][2] /= num;
+      } else {
+        cloudNormalsB.normal.n[i][0] = cloudNormalsA.normal.n[indices[0]][0];
+        cloudNormalsB.normal.n[i][1] = cloudNormalsA.normal.n[indices[0]][1];
+        cloudNormalsB.normal.n[i][2] = cloudNormalsA.normal.n[indices[0]][2];
+      }
     }
   }
 
@@ -340,7 +374,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     std::array<SameDistRgb,num_results_max> sameDistRgb;
     int numSameDistRgb = 0;
 
-    if (cPar.bColor)
+    if (cPar.bColor || (!cPar.c2c_only && cloudNormalsB.bNormal) )
     {
       assert(cloudA.bRgb && cloudB.bRgb);
       sameDistRgb[0] = SameDistRgb{cloudB.rgb.c[indices[0]], indices[0]};
@@ -373,15 +407,36 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     double distProj = 0.0;
     if (!cPar.c2c_only && cloudNormalsB.bNormal)
     {
-      if ( !isnan( cloudNormalsB.normal.n[j][0] ) && !isnan( cloudNormalsB.normal.n[j][1] ) && !isnan( cloudNormalsB.normal.n[j][2] ) )
-      {
-        distProj = ( errVector[0] * cloudNormalsB.normal.n[j][0] +
-                     errVector[1] * cloudNormalsB.normal.n[j][1] +
-                     errVector[2] * cloudNormalsB.normal.n[j][2] );
-        distProj *= distProj;  // power 2 for MSE
+     if( cPar.bAverageNormals ) {
+        for (size_t n = 0; n < numSameDistRgb; n++)
+        {
+          size_t index = sameDistRgb[n].index;
+          if ( !isnan( cloudNormalsB.normal.n[index][0] ) && !isnan( cloudNormalsB.normal.n[index][1] ) && !isnan( cloudNormalsB.normal.n[index][2] ) )
+          {
+            double dist = pow( ( cloudA.xyz.p[i][0] - cloudB.xyz.p[index][0] ) * cloudNormalsB.normal.n[index][0] +
+                               ( cloudA.xyz.p[i][1] - cloudB.xyz.p[index][1] ) * cloudNormalsB.normal.n[index][1] +
+                               ( cloudA.xyz.p[i][2] - cloudB.xyz.p[index][2] ) * cloudNormalsB.normal.n[index][2], 2.f );
+            distProj += dist;
+          }
+          else {
+            distProj += distProj_c2c;
+          }
+        }
+        distProj /= (double)numSameDistRgb;
       }
       else
-        distProj = errVector[0] * errVector[0] + errVector[1] * errVector[1] + errVector[2] * errVector[2];
+      {
+        if ( !isnan( cloudNormalsB.normal.n[j][0] ) && !isnan( cloudNormalsB.normal.n[j][1] ) && !isnan( cloudNormalsB.normal.n[j][2] ) )
+        {
+          distProj = ( errVector[0] * cloudNormalsB.normal.n[j][0] +
+                       errVector[1] * cloudNormalsB.normal.n[j][1] +
+                       errVector[2] * cloudNormalsB.normal.n[j][2] );
+          distProj *= distProj;  // power 2 for MSE
+        }
+        else {
+          distProj = distProj_c2c;
+        }
+      }
     }
 
     double distColor[3];
@@ -679,7 +734,7 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
   // Based on normals on original point cloud, derive normals on reconstructed point cloud
   PccPointCloud cloudNormalsB;
   if (!cPar.c2c_only)
-    scaleNormals( cloudNormalsA, cloudB, cloudNormalsB );
+    scaleNormals( cloudNormalsA, cloudB, cloudNormalsB, cPar.bAverageNormals );
   cout << "Normals prepared." << endl;
   cout << endl;
 

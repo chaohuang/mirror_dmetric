@@ -73,9 +73,9 @@ namespace pcc_quality {
     string file1;
     string file2;
 
-    string normIn;           //! input file name for normals, if it is different from the input file 1
+    string normIn;            //! input file name for normals, if it is different from the input file 1
 
-    bool   singlePass; //! Force to run a single pass algorithm. where the loop is over the original point cloud
+    bool   singlePass;        //! Force to run a single pass algorithm. where the loop is over the original point cloud
 
     bool   hausdorff;         //! true: output hausdorff metric as well
 
@@ -84,8 +84,9 @@ namespace pcc_quality {
     bool   bLidar;            //! report reflectance as well
 
     float  resolution;        //! intrinsic resolution, imported. for geometric distortion
-    int   dropDuplicates;   //! 0(detect) 1(drop) 2(average) subsequent points with same geo coordinates
-    int   neighborsProc;   //! 0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance
+    int    dropDuplicates;    //! 0(detect) 1(drop) 2(average) subsequent points with same geo coordinates
+    int    neighborsProc;     //! 0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance
+    bool   bAverageNormals;   //! 0(undefined), 1(average normal based on neighbors with same geometric distance)
 
     commandPar();
   };

@@ -1,5 +1,15 @@
 Main Changes Log
 
+- Release for MPEG 123, November 9, 2018, ver 0.12.3
+* ply: support uint8 reflectance properties (DF)
+* ply: remove hard coded property limit (DF)
+* reduced memory usage (DF)
+* fixed association of normal vectors with xyz position if source point
+  cloud has duplicate points removed (DF)
+* fixed use of incorrect weights under neighborsProc=2 in the presence of
+  duplicate points (DF)
+* metric is stable irrespective of input point order (DF)
+
 - Release for MPEG 122 CE, July 5, 2018, ver 0.12.2
 * fixed crash when input pointcloud does not have colour attributes (DF)
 * sanitize parameters based on input pointcloud attributes (Chevet Jean-Claude)

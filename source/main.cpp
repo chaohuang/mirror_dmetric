@@ -40,6 +40,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <omp.h>
 #include <boost/program_options.hpp>
 #include "pcc_processing.hpp"
 #include "pcc_distortion.hpp"
@@ -72,7 +73,8 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
       ("resolution,r", value(&cPar.resolution)->default_value(0), "Specify the intrinsic resolution")
       ("dropdups", value(&cPar.dropDuplicates)->default_value(0), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
       ("neighborsProc", value(&cPar.neighborsProc)->default_value(0), "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance")
-      ("averageNormals", value(&cPar.bAverageNormals)->default_value(1), "0(undefined), 1(average normal based on neighbors with same geometric distance)")
+      ("averageNormals", value(&cPar.bAverageNormals)->default_value(0), "0(undefined), 1(average normal based on neighbors with same geometric distance)")
+      ("nbThreads", value(&cPar.nbThreads)->default_value(1), "Number of threads used for parallel processing")
       ;
 
     // positional_options_description p;
@@ -154,6 +156,11 @@ int main (int argc, char *argv[])
 
   printCommand( cPar );
 
+  if( cPar.nbThreads != 0 )
+  {
+		omp_set_dynamic(0);     // Explicitly disable dynamic teams
+		omp_set_num_threads(cPar.nbThreads); // nb threads for all consecutive parallel regions
+  }
   PccPointCloud inCloud1;
   PccPointCloud inCloud2;
   PccPointCloud inNormal1;

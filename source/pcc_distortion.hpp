@@ -88,6 +88,7 @@ namespace pcc_quality {
     int    neighborsProc;     //! 0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance
     bool   bAverageNormals;   //! 0(undefined), 1(average normal based on neighbors with same geometric distance)
 
+    int    nbThreads;         //! Number of threads used for parallel processing.
     commandPar();
   };
 

@@ -9,9 +9,10 @@ cmake_install.cmake
 .project
 .cproject
 Makefile
+test/pc_error
 
 
 # Created files
 *.ply
 *.yuv
-test/pc_error 
+

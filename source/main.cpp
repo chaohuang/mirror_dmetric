@@ -71,9 +71,9 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
       ("color,c", bool_switch(&cPar.bColor)->default_value(false), "Check color distortion as well")
       ("lidar,l", bool_switch(&cPar.bLidar)->default_value(false), "Check lidar reflectance as well")
       ("resolution,r", value(&cPar.resolution)->default_value(0), "Specify the intrinsic resolution")
-      ("dropdups", value(&cPar.dropDuplicates)->default_value(0), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
-      ("neighborsProc", value(&cPar.neighborsProc)->default_value(0), "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance")
-      ("averageNormals", value(&cPar.bAverageNormals)->default_value(0), "0(undefined), 1(average normal based on neighbors with same geometric distance)")
+      ("dropdups", value(&cPar.dropDuplicates)->default_value(2), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
+      ("neighborsProc", value(&cPar.neighborsProc)->default_value(1), "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance")
+      ("averageNormals", value(&cPar.bAverageNormals)->default_value(1), "0(undefined), 1(average normal based on neighbors with same geometric distance)")
       ("nbThreads", value(&cPar.nbThreads)->default_value(1), "Number of threads used for parallel processing")
       ;
 

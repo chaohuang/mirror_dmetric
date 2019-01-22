@@ -41,13 +41,12 @@
 #include <iostream>
 #include <sstream>
 #include <omp.h>
-#include <boost/program_options.hpp>
 #include "pcc_processing.hpp"
 #include "pcc_distortion.hpp"
 #include "clockcom.hpp"
 
+#include "program-options-lite/program_options_lite.h"
 using namespace std;
-using namespace boost::program_options;
 using namespace pcc_quality;
 using namespace pcc_processing;
 
@@ -60,61 +59,62 @@ void printusage()
 int parseCommand( int ac, char * av[], commandPar &cPar )
 {
   try {
-    options_description desc("Allowed options");
-    desc.add_options()
-      ("help,h", "produce help message")
-      ("fileA,a", value(&cPar.file1)->required(), "Input file 1, original version") // value< string >
-      ("fileB,b", value(&cPar.file2)->default_value(""), "Input file 2, processed version")
-      ("inputNorm,n", value(&cPar.normIn)->default_value(""), "File name to import the normals of original point cloud, if different from original file 1")
-      ("singlePass,s", bool_switch(&cPar.singlePass)->default_value(false), "Force running a single pass, where the loop is over the original point cloud")
-      ("hausdorff,d", bool_switch(&cPar.hausdorff)->default_value(false), "Send the Haursdorff metric as well")
-      ("color,c", bool_switch(&cPar.bColor)->default_value(false), "Check color distortion as well")
-      ("lidar,l", bool_switch(&cPar.bLidar)->default_value(false), "Check lidar reflectance as well")
-      ("resolution,r", value(&cPar.resolution)->default_value(0), "Specify the intrinsic resolution")
-      ("dropdups", value(&cPar.dropDuplicates)->default_value(2), "0(detect), 1(drop), 2(average) subsequent points with same coordinates")
-      ("neighborsProc", value(&cPar.neighborsProc)->default_value(1), "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance")
-      ("averageNormals", value(&cPar.bAverageNormals)->default_value(1), "0(undefined), 1(average normal based on neighbors with same geometric distance)")
-      ("nbThreads", value(&cPar.nbThreads)->default_value(1), "Number of threads used for parallel processing")
-      ;
+     namespace po = df::program_options_lite;
+     bool print_help = false;
+     // The definition of the program/config options, along with default values.
+     //
+     // NB: when updating the following tables:
+     //      (a) please keep to 80-columns for easier reading at a glance,
+     //      (b) do not vertically align values -- it breaks quickly
+     //
+     po::Options opts;
+     opts.addOptions()
+     ("help",           print_help,           false, "This help text")
 
-    // positional_options_description p;
-    // p.add("rtimes", -1);
-    variables_map vm;
-    store(parse_command_line(ac, av, desc), vm);
+     ("a,fileA",        cPar.file1,           string(""), "Input file 1, original version" )
+     ("b,fileB",        cPar.file2,           string(""), "Input file 2, processed version" )
+     ("n,inputNorm",    cPar.normIn,          string(""), "File name to import the normals of original point cloud, if different from original file 1n" )
 
-    if (ac == 1 || vm.count("help")) { // @DT: Important too add ac == 1
-      cout << "Usage: " << av[0] << " [options]\n";
-      cout << desc;
-      return 0;
-    }
+     ("s,singlePass",   cPar.singlePass,      false,      "Force running a single pass, where the loop is over the original point cloud" )
+     ("d,hausdorff",    cPar.hausdorff,       false,      "Send the Haursdorff metric as well" )
+     ("c,color",        cPar.bColor,          false,      "Check color distortion as well" )
+     ("l,lidar",        cPar.bLidar,          false,      "Check lidar reflectance as well" )
+     ("r,resolution",   cPar.resolution,      0.0f,       "Specify the intrinsic resolution" )
+     ("dropdups",       cPar.dropDuplicates,  2,          "0(detect), 1(drop), 2(average) subsequent points with same coordinates" )
+     ("neighborsProc",  cPar.neighborsProc,   1,          "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance" )
+     ("averageNormals", cPar.bAverageNormals, true,       "0(undefined), 1(average normal based on neighbors with same geometric distance)" )
+     ("nbThreads",      cPar.nbThreads,       1,          "Number of threads used for parallel processing" );
 
-    notify(vm);                 // @DT: Report any missing parameters
+     po::setDefaults(opts);
+      po::ErrorReporter err;
+      const list<const char *> &argv_unhandled = po::scanArgv(opts, ac, (const char **)av, err);
 
-    // It is wierd the variables were not set. Force the job
-    cPar.file1 = vm["fileA"].as< string >();
-    cPar.file2 = vm["fileB"].as< string >();
-    cPar.normIn = vm["inputNorm"].as< string >();
-    cPar.singlePass = vm["singlePass"].as< bool >();
-    cPar.bColor = vm["color"].as< bool >();
-    cPar.bLidar = vm["lidar"].as< bool >();
-    cPar.resolution = vm["resolution"].as< float >();
+      for (const auto arg : argv_unhandled) {
+        err.warn() << "Unhandled argument ignored: " << arg << "\n";
+      }
 
+      if (ac == 1 || print_help) {
+        po::doHelp( std::cout, opts, 78 );
+        return false;
+      }
+      if( cPar.file1 == "" ) { po::doHelp( std::cout, opts, 78 ); err.error() << "File 1 parameters not correct \n"; }
+      if( cPar.file2 == "" ) { po::doHelp( std::cout, opts, 78 ); err.error() << "File 2 parameters not correct \n"; }
     // Safety check
 
     // Check whether your system is compatible with my assumptions
-    int szFloat = sizeof(float)*8;
+    int szFloat  = sizeof(float)*8;
     int szDouble = sizeof(double)*8;
-    int szShort = sizeof(short)*8;
-    int szInt = sizeof(int)*8;
+    int szShort  = sizeof(short)*8;
+    int szInt    = sizeof(int)*8;
     // int szLong = sizeof(long long)*8;
 
     if ( szFloat != 32 || szDouble != 64 || szShort != 16 || szInt != 32 ) //  || szLong != 64
     {
       cout << "Warning: Your system is incompatible with our assumptions below: " << endl;
-      cout << "float: "<< sizeof(float)*8 << endl;
-      cout << "double: "<< sizeof(double)*8 << endl;
-      cout << "short: "<< sizeof(short)*8 << endl;
-      cout << "int: "<< sizeof(int)*8 << endl;
+      cout << "float: "  << sizeof( float  )*8 << endl;
+      cout << "double: " << sizeof( double )*8 << endl;
+      cout << "short: "  << sizeof( short  )*8 << endl;
+      cout << "int: "    << sizeof( int    )*8 << endl;
       // cout << "long long: "<< sizeof(long long)*8 << endl;
       cout << endl;
       return 0;

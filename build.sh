@@ -3,21 +3,46 @@
 CURDIR=`dirname $0`;
 echo -e "\033[0;32mBuild: $(readlink -f $CURDIR) \033[0m";
 
-########################################################################################
-## Install pcl packages and requiered                                                ##
-##   sudo add-apt-repository ppa:v-launchpad-jochen-sprickerhof-de/pcl                ##
-##   sudo apt-get update                                                              ##
-##   sudo apt-get install libpcl-dev libopenni2-dev libproj-dev                       ##
-########################################################################################
+case "$(uname -s)" in
+  Linux*)     MACHINE=Linux;;
+  Darwin*)    MACHINE=Mac;;
+  CYGWIN*)    MACHINE=Cygwin;;
+  MINGW*)     MACHINE=MinGw;;
+  *)          MACHINE="UNKNOWN:${unameOut}"
+esac
 
+MODE=Release;
+CMAKE_FLAGS=;
+if [ "$MACHINE" == "Linux" ] ; then NUMBER_OF_PROCESSORS=`grep -c ^processor /proc/cpuinfo`; fi
 
-if [ $# == 1 -a "$1" == "debug" ] ; then TYPE=Debug; else   TYPE=Release; fi
-if [ "$(expr substr $(uname -s) 1 5)" == "Linux" ] 
-then
-  NUMBER_OF_PROCESSORS=`nproc`;
-  #cmake -Wno-dev -H${CURDIR} -B${CURDIR}/build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$TYPE
-  cmake -Wno-dev -H${CURDIR}/source -B${CURDIR}/build -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=$TYPE -DBOOST_ROOT=/home/wp21/PCC/install/boost_1_64_0
-  make -C ${CURDIR}/build -j ${NUMBER_OF_PROCESSORS} -s
-else
-  echo "$CURDIR Windows compilation not supported ";
-fi 
+for i in "$@"
+do  
+  case "$i" in
+    debug|Debug|DEBUG      ) MODE=Debug; CMAKE_FLAGS="$CMAKE_FLAGS-DCMAKE_C_FLAGS=\"-g2\" -DCMAKE_CXX_FLAGS=\"-g2\" ";;
+    release|Release|RELEASE) MODE=Release;;
+    *                      ) echo "ERROR: arguments \"$i\" not supported: option = [debug|release]"; exit -1;;
+  esac
+done
+
+CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=$MODE";
+case "${MACHINE}" in
+  Linux) cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Unix Makefiles"              ${CMAKE_FLAGS};; 
+  Mac)   cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Xcode"                       ${CMAKE_FLAGS};;
+  *)     cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Visual Studio 14 2015 Win64" ${CMAKE_FLAGS};;
+esac
+
+case "${MACHINE}" in
+  Linux) make -C ${CURDIR}/build/${MODE} -j ${NUMBER_OF_PROCESSORS} ${CMD} -s;; 
+  Mac)   echo "Please, open the generated xcode project and build it ";;
+  *)     MSBUILD="/c/Program Files (x86)/MSBuild/14.0/Bin/MSBuild.exe"
+         printf -v MSBUILDPATH '%q' "$MSBUILD"
+         MSBUILDFOUND=`ls "${MSBUILD[@]}" | grep "No such file or directory"`
+         if [ "$MSBUILDFOUND" == "" ] 
+         then 
+           eval ${MSBUILDPATH[@]} ./build/${MODE}/TMC2.sln /property:Configuration=${MODE};
+         else
+           echo "MsBuild not found ($MSBUILD)";
+           echo "Please, open the generated visual studio solution and build it ";        
+         fi
+  ;;
+esac 

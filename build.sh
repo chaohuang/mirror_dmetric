@@ -26,9 +26,9 @@ done
 
 CMAKE_FLAGS="$CMAKE_FLAGS -DCMAKE_BUILD_TYPE=$MODE";
 case "${MACHINE}" in
-  Linux) cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Unix Makefiles"              ${CMAKE_FLAGS};; 
-  Mac)   cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Xcode"                       ${CMAKE_FLAGS};;
-  *)     cmake -H${CURDIR} -B${CURDIR}/build/${MODE} -G "Visual Studio 14 2015 Win64" ${CMAKE_FLAGS};;
+  Linux) cmake -H${CURDIR}/source -B${CURDIR}/build/${MODE} -G "Unix Makefiles"              ${CMAKE_FLAGS};; 
+  Mac)   cmake -H${CURDIR}/source -B${CURDIR}/build/${MODE} -G "Xcode"                       ${CMAKE_FLAGS};;
+  *)     cmake -H${CURDIR}/source -B${CURDIR}/build/${MODE} -G "Visual Studio 14 2015 Win64" ${CMAKE_FLAGS};;
 esac
 
 case "${MACHINE}" in
@@ -39,7 +39,7 @@ case "${MACHINE}" in
          MSBUILDFOUND=`ls "${MSBUILD[@]}" | grep "No such file or directory"`
          if [ "$MSBUILDFOUND" == "" ] 
          then 
-           eval ${MSBUILDPATH[@]} ./build/${MODE}/TMC2.sln /property:Configuration=${MODE};
+           eval ${MSBUILDPATH[@]} ./build/${MODE}/pc_error.sln /property:Configuration=${MODE};
          else
            echo "MsBuild not found ($MSBUILD)";
            echo "Please, open the generated visual studio solution and build it ";        

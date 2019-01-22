@@ -10,6 +10,7 @@ cmake_install.cmake
 .cproject
 Makefile
 test/pc_error
+test/pc_error.exe
 
 
 # Created files

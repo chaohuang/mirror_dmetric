@@ -383,31 +383,21 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       }
     } while( sqrDist[0] == sqrDist[num_results-1] && cPar.bAverageNormals && num_results + num_results_incr <= num_results_max );
 
-    struct SameDistRgb {
-      RGBSet::value_type rgb;
-      size_t index;
-    };
-    std::array<SameDistRgb,num_results_max> sameDistRgb;
-    int numSameDistRgb = 0;
-
-    if (cPar.bColor || (!cPar.c2c_only && cloudNormalsB.bNormal) )
-    {
-      assert(cloudA.bRgb && cloudB.bRgb);
-      sameDistRgb[0] = SameDistRgb{cloudB.rgb.c[indices[0]], indices[0]};
-      numSameDistRgb++;
-
-      for (size_t n = 1; n < num_results; n++)
-      {
-        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8)
-          sameDistRgb[numSameDistRgb++] = SameDistRgb{cloudB.rgb.c[indices[n]], indices[n]};
-        else
-          break;
-      }
-    }
-
     int j = indices[0];
     if (j < 0)
       continue;
+
+    std::vector<size_t> sameDistPoints;
+    if (cPar.bColor || (!cPar.c2c_only && cloudNormalsB.bNormal) ) {
+      sameDistPoints.push_back( indices[0] );
+      for (size_t n = 1; n < num_results; n++) {
+        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8) {
+          sameDistPoints.push_back( indices[n] );
+        } else {
+          break;
+        }
+      }
+    }
 
     // Compute the error vector
     std::array<double,3> errVector;
@@ -421,37 +411,32 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     // Compute point-to-plane
     // Normals in B will be used for point-to-plane
     double distProj = 0.0;
-    if (!cPar.c2c_only && cloudNormalsB.bNormal)
-    {
+    if (!cPar.c2c_only && cloudNormalsB.bNormal) {
       if( cPar.bAverageNormals ) {
-        for (size_t n = 0; n < numSameDistRgb; n++)
-        {
-          size_t index = sameDistRgb[n].index;
-          if ( !isnan( cloudNormalsB.normal.n[index][0] ) && !isnan( cloudNormalsB.normal.n[index][1] ) && !isnan( cloudNormalsB.normal.n[index][2] ) )
-          {
+        for ( auto& index : sameDistPoints ) {
+          if ( !isnan( cloudNormalsB.normal.n[index][0] ) &&
+               !isnan( cloudNormalsB.normal.n[index][1] ) &&
+               !isnan( cloudNormalsB.normal.n[index][2] ) ) {
             double dist = pow( ( cloudA.xyz.p[i][0] - cloudB.xyz.p[index][0] ) * cloudNormalsB.normal.n[index][0] +
                                ( cloudA.xyz.p[i][1] - cloudB.xyz.p[index][1] ) * cloudNormalsB.normal.n[index][1] +
                                ( cloudA.xyz.p[i][2] - cloudB.xyz.p[index][2] ) * cloudNormalsB.normal.n[index][2], 2.f );
             distProj += dist;
-          }
-          else {
+          } else {
             distProj += cloudA.xyz.p[i][0] - cloudB.xyz.p[index][0] + 
-                cloudA.xyz.p[i][1] - cloudB.xyz.p[index][1] +
-                cloudA.xyz.p[i][2] - cloudB.xyz.p[index][2];
+                        cloudA.xyz.p[i][1] - cloudB.xyz.p[index][1] +
+                        cloudA.xyz.p[i][2] - cloudB.xyz.p[index][2];
           }
         }
-        distProj /= (double)numSameDistRgb;
-      }
-      else
-      {
-        if ( !isnan( cloudNormalsB.normal.n[j][0] ) && !isnan( cloudNormalsB.normal.n[j][1] ) && !isnan( cloudNormalsB.normal.n[j][2] ) )
-        {
+        distProj /= (double)sameDistPoints.size();
+      } else {
+        if ( !isnan( cloudNormalsB.normal.n[j][0] ) &&
+             !isnan( cloudNormalsB.normal.n[j][1] ) &&
+             !isnan( cloudNormalsB.normal.n[j][2] ) ) {
           distProj = ( errVector[0] * cloudNormalsB.normal.n[j][0] +
-              errVector[1] * cloudNormalsB.normal.n[j][1] +
-              errVector[2] * cloudNormalsB.normal.n[j][2] );
+                       errVector[1] * cloudNormalsB.normal.n[j][1] +
+                       errVector[2] * cloudNormalsB.normal.n[j][2] );
           distProj *= distProj;  // power 2 for MSE
-        }
-        else {
+        } else {
           distProj = distProj_c2c;
         }
       }
@@ -480,13 +465,11 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
           case 2:     // Weighted average
           {
             int nbdupcumul = 0;
-            for (int n = 0; n < numSameDistRgb; n++)
-            {
-              const auto& value = sameDistRgb[n];
-              int nbdup = cloudB.xyz.nbdup[value.index];
-              r += nbdup*value.rgb[0];
-              g += nbdup*value.rgb[1];
-              b += nbdup*value.rgb[2];
+            for ( auto& index : sameDistPoints ) {
+              int nbdup = cloudB.xyz.nbdup[ index ];
+              r += nbdup * cloudB.rgb.c[index][0];
+              g += nbdup * cloudB.rgb.c[index][1];
+              b += nbdup * cloudB.rgb.c[index][2];
               nbdupcumul += nbdup;
             }
             assert(nbdupcumul);
@@ -497,40 +480,34 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
           break;
           case 3:   // Min
           {
-            const std::array<unsigned char, 3ul>* minrgb = &sameDistRgb[0].rgb;
-            unsigned int distColor_min = (std::numeric_limits<unsigned int>::max)();
-            for (int n = 0; n < numSameDistRgb; n++)
-            {
-              const auto& value = sameDistRgb[n];
-              unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
-                                     + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
-                                     + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);
-              if (distRGB < distColor_min)
-              {
-                distColor_min = distRGB;
-                minrgb = &value.rgb;
+            unsigned int distColorMin = (std::numeric_limits<unsigned int>::max)();
+            size_t indexMin = 0;
+            for ( auto& index : sameDistPoints ) {
+              unsigned int distRGB = (cloudA.rgb.c[i][0] - cloudB.rgb.c[index][0]) * (cloudA.rgb.c[i][0] - cloudB.rgb.c[index][0])
+                                   + (cloudA.rgb.c[i][1] - cloudB.rgb.c[index][1]) * (cloudA.rgb.c[i][1] - cloudB.rgb.c[index][1])
+                                   + (cloudA.rgb.c[i][2] - cloudB.rgb.c[index][2]) * (cloudA.rgb.c[i][2] - cloudB.rgb.c[index][2]);
+              if ( distRGB < distColorMin) {
+                distColorMin = distRGB;
+                indexMin = index;
               }
             }
-            color = *minrgb;
+            color = cloudB.rgb.c[indexMin];
           }
           break;
           case 4:   // Max
           {
-            const std::array<unsigned char, 3ul>* maxrgb = &sameDistRgb[0].rgb;
-            unsigned int distColor_max = 0;
-            for (int n = 0; n < numSameDistRgb; n++)
-            {
-              const auto& value = sameDistRgb[n];
-              unsigned int distRGB = (cloudA.rgb.c[i][0] - value.rgb[0]) * (cloudA.rgb.c[i][0] - value.rgb[0])
-                                     + (cloudA.rgb.c[i][1] - value.rgb[1]) * (cloudA.rgb.c[i][1] - value.rgb[1])
-                                     + (cloudA.rgb.c[i][2] - value.rgb[2]) * (cloudA.rgb.c[i][2] - value.rgb[2]);
-              if (distRGB > distColor_max)
-              {
-                distColor_max = distRGB;
-                maxrgb = &value.rgb;
+            unsigned int distColorMax = 0;
+            size_t indexMax = 0;
+            for ( auto& index : sameDistPoints ) {
+              unsigned int distRGB = (cloudA.rgb.c[i][0] - cloudB.rgb.c[index][0]) * (cloudA.rgb.c[i][0] - cloudB.rgb.c[index][0])
+                                   + (cloudA.rgb.c[i][1] - cloudB.rgb.c[index][1]) * (cloudA.rgb.c[i][1] - cloudB.rgb.c[index][1])
+                                   + (cloudA.rgb.c[i][2] - cloudB.rgb.c[index][2]) * (cloudA.rgb.c[i][2] - cloudB.rgb.c[index][2]);
+              if (distRGB > distColorMax) {
+                distColorMax = distRGB;
+                indexMax = index;
               }
             }
-            color = *maxrgb;
+            color = cloudB.rgb.c[indexMax];
           }
           break;
         }

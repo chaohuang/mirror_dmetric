@@ -11,6 +11,7 @@ if (OPENMP_FOUND)
   message(STATUS "OpenMP found.")
   set (CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}   ${OpenMP_C_FLAGS}")
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  add_compile_options( -D OPENMP_FOUND ) 
 endif()
 
 execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)

@@ -40,10 +40,13 @@
 
 #include <iostream>
 #include <sstream>
-#include <omp.h>
 #include "pcc_processing.hpp"
 #include "pcc_distortion.hpp"
 #include "clockcom.hpp"
+
+#ifdef OPENMP_FOUND
+#include <omp.h>
+#endif
 
 #include "program-options-lite/program_options_lite.h"
 using namespace std;
@@ -156,11 +159,15 @@ int main (int argc, char *argv[])
 
   printCommand( cPar );
 
+#ifdef OPENMP_FOUND
   if( cPar.nbThreads != 0 )
   {
 		omp_set_dynamic(0);     // Explicitly disable dynamic teams
 		omp_set_num_threads(cPar.nbThreads); // nb threads for all consecutive parallel regions
   }
+#else
+  printf("Warning: OpenMP is not found, multi-threading is disabled. \n");
+#endif
   PccPointCloud inCloud1;
   PccPointCloud inCloud2;
   PccPointCloud inNormal1;

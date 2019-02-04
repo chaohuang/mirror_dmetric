@@ -57,7 +57,7 @@ using namespace nanoflann;
 using namespace std;
 using namespace pcc_processing;
 
-#define PCC_QUALITY_VERSION "0.13.1"
+#define PCC_QUALITY_VERSION "0.13.3"
 
 namespace pcc_quality {
 

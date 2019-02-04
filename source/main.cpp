@@ -72,7 +72,7 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
      //
      po::Options opts;
      opts.addOptions()
-     ("help",           print_help,           false, "This help text")
+     ("help",           print_help,           false,      "This help text")
 
      ("a,fileA",        cPar.file1,           string(""), "Input file 1, original version" )
      ("b,fileB",        cPar.file2,           string(""), "Input file 2, processed version" )
@@ -138,13 +138,21 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
 
 void printCommand( commandPar &cPar )
 {
-  cout << "infile1: " << cPar.file1 << endl;
-  cout << "infile2: " << cPar.file2 << endl;
-  cout << "normal1: " << cPar.normIn << endl;
-
-  if (cPar.singlePass)
+  cout << "infile1:        " << cPar.file1            << endl;
+  cout << "infile2:        " << cPar.file2            << endl;
+  cout << "normal1:        " << cPar.normIn           << endl;
+  cout << "singlePass:     " << cPar.singlePass       << endl;
+  cout << "hausdorff:      " << cPar.hausdorff        << endl;
+  cout << "color:          " << cPar.bColor           << endl;
+  cout << "lidar:          " << cPar.bLidar           << endl;
+  cout << "resolution:     " << cPar.resolution       << endl;
+  cout << "dropDuplicates: " << cPar.dropDuplicates   << endl;
+  cout << "neighborsProc:  " << cPar.neighborsProc    << endl;
+  cout << "averageNormals: " << cPar.bAverageNormals  << endl;
+  cout << "nbThreads:      " << cPar.nbThreads        << endl;
+  if (cPar.singlePass) {
     cout << "force running a single pass" << endl;
-
+  }
   cout << endl;
 }
 
@@ -162,8 +170,8 @@ int main (int argc, char *argv[])
 #ifdef OPENMP_FOUND
   if( cPar.nbThreads != 0 )
   {
-		omp_set_dynamic(0);     // Explicitly disable dynamic teams
-		omp_set_num_threads(cPar.nbThreads); // nb threads for all consecutive parallel regions
+    omp_set_dynamic(0);                  // Explicitly disable dynamic teams
+    omp_set_num_threads(cPar.nbThreads); // nb threads for all consecutive parallel regions
   }
 #else
   printf("Warning: OpenMP is not found, multi-threading is disabled. \n");

@@ -8,7 +8,7 @@ repository:
    <http://mpegx.int-evry.fr/software/MPEG/PCC/mpeg-pcc-dmetric>
 
 Each released version may be identified by a version control system tag in
-the form `release-v0.13`.
+the form `release-v0.13.3`.
 
 An example:
 

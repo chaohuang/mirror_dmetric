@@ -2,11 +2,11 @@ General options
 ---------------
 
 The parsing options process have been updated to uniformize the PCC softwares and used: dependencies/program-options-lite. 
-This library defined a parsing process quites differents than the Boost library. 
+This library defined a parsing process different than the Boost library, previously used 
 
-The command line options must be update and:
+The command line options must be updated and:
 
-  * the short options without parameters must be update and now take an argument: ( "-c" => "-c 1")
+  * the short options without parameters must be updated and now take an argument: ( "-c" => "-c 1")
   * the long options are required to use the "--option=value" form, rather than the previous "--option value" form.
 
 

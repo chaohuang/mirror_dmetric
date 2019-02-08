@@ -52,86 +52,109 @@
 using namespace std;
 using namespace pcc_quality;
 using namespace pcc_processing;
+namespace po = df::program_options_lite;
+void printUsage( //int ac, char * av[],
+    po::Options& opts
+    ) {
+  cout << endl;
+  cout << "Usage: pc_error --fileA=infileA --fileB=infileB [options] " << endl;
+  cout << endl;
+  cout << "Options: " << endl;
+  doHelp( std::cout, opts, 78 );
+  cout << endl;
 
-void printusage()
-{
-  cout << "pc_psnr cloud_a cloud_b [radiusTimes]" << endl;
-  cout << "  default radiusTimes is 10" << endl;
+  cout << "Example: " << endl;
+  cout << "   ./test/pc_error \\" << endl;
+  cout << "          --fileA=./loot/loot_vox10_1000.ply \\" << endl;
+  cout << "          --fileB=./S23C2AIR01_loot_dec_1000.ply \\" << endl;
+  cout << "          --inputNorm=./loot/loot_vox10_1000_n.ply \\" << endl;
+  cout << "          --color=1 \\" << endl;
+  cout << "          --resolution=1023 " << endl;
+  cout << endl;
+
+
+  cout << "  #####################################################################" << endl;
+  cout << "  #                                                                   #" << endl;
+  cout << "  #  The parsing options process have been updated to uniformize      #" << endl;
+  cout << "  #  the PCC softwares and use: dependencies/program-options-lite.    #" << endl;
+  cout << "  #  This library defined a parsing process a little different than   #" << endl;
+  cout << "  #  the Boost library, previously used.                              #" << endl;
+  cout << "  #                                                                   #" << endl;
+  cout << "  #  The command line options must be updated and:                    #" << endl;
+  cout << "  #    * the short options without parameters must be                 #" << endl;
+  cout << "  #      updated and now take an argument: ( \"-c\" => \"-c 1\")          #" << endl;
+  cout << "  #    * the long options are required to use the \"--option=value\"    #" << endl;
+  cout << "  #      form, rather than the previous \"--option value\" form.        #" << endl;
+  cout << "  #                                                                   #" << endl;
+  cout << "  #####################################################################" << endl;
+
 }
 
 int parseCommand( int ac, char * av[], commandPar &cPar )
 {
+  bool print_help = ac == 1;
+  po::Options opts;
+  po::ErrorReporter err;
   try {
-     namespace po = df::program_options_lite;
-     bool print_help = false;
-     // The definition of the program/config options, along with default values.
-     //
-     // NB: when updating the following tables:
-     //      (a) please keep to 80-columns for easier reading at a glance,
-     //      (b) do not vertically align values -- it breaks quickly
-     //
-     po::Options opts;
-     opts.addOptions()
-     ("help",           print_help,           false,      "This help text")
+    opts.addOptions()
+       ("help",           print_help,           false,      "This help text")
 
-     ("a,fileA",        cPar.file1,           string(""), "Input file 1, original version" )
-     ("b,fileB",        cPar.file2,           string(""), "Input file 2, processed version" )
-     ("n,inputNorm",    cPar.normIn,          string(""), "File name to import the normals of original point cloud, if different from original file 1n" )
+       ("a,fileA",        cPar.file1,           string(""), "Input file 1, original version" )
+       ("b,fileB",        cPar.file2,           string(""), "Input file 2, processed version" )
+       ("n,inputNorm",    cPar.normIn,          string(""), "File name to import the normals of original point "
+                                                            "cloud, if different from original file 1n" )
 
-     ("s,singlePass",   cPar.singlePass,      false,      "Force running a single pass, where the loop is over the original point cloud" )
-     ("d,hausdorff",    cPar.hausdorff,       false,      "Send the Haursdorff metric as well" )
-     ("c,color",        cPar.bColor,          false,      "Check color distortion as well" )
-     ("l,lidar",        cPar.bLidar,          false,      "Check lidar reflectance as well" )
-     ("r,resolution",   cPar.resolution,      0.0f,       "Specify the intrinsic resolution" )
-     ("dropdups",       cPar.dropDuplicates,  2,          "0(detect), 1(drop), 2(average) subsequent points with same coordinates" )
-     ("neighborsProc",  cPar.neighborsProc,   1,          "0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance" )
-     ("averageNormals", cPar.bAverageNormals, true,       "0(undefined), 1(average normal based on neighbors with same geometric distance)" )
-     ("nbThreads",      cPar.nbThreads,       1,          "Number of threads used for parallel processing" );
+       ("s,singlePass",   cPar.singlePass,      false,      "Force running a single pass, where the loop "
+                                                            "is over the original point cloud" )
+       ("d,hausdorff",    cPar.hausdorff,       false,      "Send the Haursdorff metric as well" )
+       ("c,color",        cPar.bColor,          false,      "Check color distortion as well" )
+       ("l,lidar",        cPar.bLidar,          false,      "Check lidar reflectance as well" )
+       ("r,resolution",   cPar.resolution,      0.0f,       "Specify the intrinsic resolution" )
+       ("dropdups",       cPar.dropDuplicates,  2,          "0(detect), 1(drop), 2(average) subsequent points "
+                                                            "with same coordinates" )
+       ("neighborsProc",  cPar.neighborsProc,   1,          "0(undefined), 1(average), 2(weighted average), "
+                                                            "3(min), 4(max) neighbors with same geometric distance" )
+       ("averageNormals", cPar.bAverageNormals, true,       "0(undefined), 1(average normal based on neighbors "
+                                                            "with same geometric distance)" )
+       ("nbThreads",      cPar.nbThreads,       1,          "Number of threads used for parallel processing" );
 
-     po::setDefaults(opts);
-      po::ErrorReporter err;
-      const list<const char *> &argv_unhandled = po::scanArgv(opts, ac, (const char **)av, err);
-
-      for (const auto arg : argv_unhandled) {
-        err.warn() << "Unhandled argument ignored: " << arg << "\n";
-      }
-
-      if (ac == 1 || print_help) {
-        po::doHelp( std::cout, opts, 78 );
-        return false;
-      }
-      if( cPar.file1 == "" ) { po::doHelp( std::cout, opts, 78 ); err.error() << "File 1 parameters not correct \n"; }
-      if( cPar.file2 == "" ) { po::doHelp( std::cout, opts, 78 ); err.error() << "File 2 parameters not correct \n"; }
-    // Safety check
-
-    // Check whether your system is compatible with my assumptions
-    int szFloat  = sizeof(float)*8;
-    int szDouble = sizeof(double)*8;
-    int szShort  = sizeof(short)*8;
-    int szInt    = sizeof(int)*8;
-    // int szLong = sizeof(long long)*8;
-
-    if ( szFloat != 32 || szDouble != 64 || szShort != 16 || szInt != 32 ) //  || szLong != 64
-    {
-      cout << "Warning: Your system is incompatible with our assumptions below: " << endl;
-      cout << "float: "  << sizeof( float  )*8 << endl;
-      cout << "double: " << sizeof( double )*8 << endl;
-      cout << "short: "  << sizeof( short  )*8 << endl;
-      cout << "int: "    << sizeof( int    )*8 << endl;
-      // cout << "long long: "<< sizeof(long long)*8 << endl;
-      cout << endl;
-      return 0;
+    setDefaults(opts);
+    const list<const char *> &argv_unhandled = scanArgv(opts, ac, (const char **)av, err);
+    if( err.is_errored   ) { print_help = true; };
+    for (const auto arg : argv_unhandled) {
+      err.warn() << "Unhandled argument ignored: " << arg << "\n";
+      print_help = true;
     }
-
-    return 1;
+    if( cPar.file1 == "" ) { err.error() << "File 1 parameters not correct \n"; print_help = true; }
+    if( cPar.file2 == "" ) { err.error() << "File 2 parameters not correct \n"; print_help = true; }
   }
-
-  catch(std::exception& e)
-  {
+  catch(std::exception& e) {
     cout << e.what() << "\n";
+    printUsage( opts );
+  }
+  if( print_help ) {
+    printUsage( opts );
+    return false;
+  }
+  // Check whether your system is compatible with my assumptions
+  int szFloat  = sizeof(float)*8;
+  int szDouble = sizeof(double)*8;
+  int szShort  = sizeof(short)*8;
+  int szInt    = sizeof(int)*8;
+  // int szLong = sizeof(long long)*8;
+
+  if ( szFloat != 32 || szDouble != 64 || szShort != 16 || szInt != 32 ) //  || szLong != 64
+  {
+    cout << "Warning: Your system is incompatible with our assumptions below: " << endl;
+    cout << "float: "  << sizeof( float  )*8 << endl;
+    cout << "double: " << sizeof( double )*8 << endl;
+    cout << "short: "  << sizeof( short  )*8 << endl;
+    cout << "int: "    << sizeof( int    )*8 << endl;
+    // cout << "long long: "<< sizeof(long long)*8 << endl;
+    cout << endl;
     return 0;
   }
-
+  return 1;
   // Confict check
 
 }
@@ -162,8 +185,9 @@ int main (int argc, char *argv[])
   cout << "PCC quality measurement software, version " << PCC_QUALITY_VERSION << endl << endl;
 
   commandPar cPar;
-  if ( parseCommand( argc, argv, cPar ) == 0 )
+  if ( parseCommand( argc, argv, cPar ) == 0 ) {
     return 0;
+  }
 
   printCommand( cPar );
 

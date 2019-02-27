@@ -13,7 +13,7 @@ The command line options must be updated and:
 The next table presents the software options.
  
 
-\begin{longtable}{p{3cm}p{2cm}p{8cm}}
+\begin{longtable}{p{4cm}p{1cm}p{8cm}}
 \hline
 {\bf Parameter }  & {\bf Value} & {\bf Usage} \\ \hline
         --help=0           & 0   & This help text                                       \\ \hline

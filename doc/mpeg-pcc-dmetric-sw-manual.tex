@@ -31,6 +31,9 @@
 % text highlighting
 \usepackage{soul}
 
+% add empty tightlist macro to resolve pandoc issues
+\def\tightlist{}
+
 %%
 % code / algorithm formatting
 % \usepackage{minted}
@@ -74,7 +77,7 @@
 \newcommand\ie{\emph{i.e\@ifnextchar.{}{.\@}}}
 \makeatother
 
-\title{mpeg-pcc-dmetric v0.13 user manual}
+\title{mpeg-pcc-dmetric v0.13.4 user manual}
 \author{%
   Julien Ricard \email{julien.ricard@technicolor.com}
  \and
@@ -91,7 +94,7 @@
 \maketitle
 \begin{abstract}
 This document is a user manual describing usage of reference software
-for the mpeg-pcc-dmetric project. It applies to version 0.13 of the software.
+for the mpeg-pcc-dmetric project. It applies to version 0.13.4 of the software.
 \end{abstract}
 
 \tableofcontents

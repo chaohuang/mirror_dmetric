@@ -116,6 +116,8 @@ int parseCommand( int ac, char * av[], commandPar &cPar )
                                                             "3(min), 4(max) neighbors with same geometric distance" )
        ("averageNormals", cPar.bAverageNormals, true,       "0(undefined), 1(average normal based on neighbors "
                                                             "with same geometric distance)" )
+       ("mseSpace",       cPar.mseSpace,        1,          "Colour space used for PSNR calculation\n"
+                                                            "0: none (identity) 1: ITU-R BT.709 8: YCgCo-R")
        ("nbThreads",      cPar.nbThreads,       1,          "Number of threads used for parallel processing" );
 
     setDefaults(opts);
@@ -172,6 +174,7 @@ void printCommand( commandPar &cPar )
   cout << "dropDuplicates: " << cPar.dropDuplicates   << endl;
   cout << "neighborsProc:  " << cPar.neighborsProc    << endl;
   cout << "averageNormals: " << cPar.bAverageNormals  << endl;
+  cout << "mseSpace:       " << cPar.mseSpace         << endl;
   cout << "nbThreads:      " << cPar.nbThreads        << endl;
   if (cPar.singlePass) {
     cout << "force running a single pass" << endl;

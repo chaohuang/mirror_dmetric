@@ -86,6 +86,7 @@ namespace pcc_quality {
     float  resolution;        //! intrinsic resolution, imported. for geometric distortion
     int    dropDuplicates;    //! 0(detect) 1(drop) 2(average) subsequent points with same geo coordinates
     int    neighborsProc;     //! 0(undefined), 1(average), 2(weighted average), 3(min), 4(max) neighbors with same geometric distance
+    int    mseSpace;          //! 0(RGB), 1(YCbCr), 8(YCoCg-R)
     bool   bAverageNormals;   //! 0(undefined), 1(average normal based on neighbors with same geometric distance)
 
     int    nbThreads;         //! Number of threads used for parallel processing.

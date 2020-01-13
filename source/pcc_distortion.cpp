@@ -293,27 +293,40 @@ scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud 
 }
 
 /**
-   \brief helper function to convert RGB to YUV, using BT.601
+   \brief helper function to convert RGB to YUV (BT.709 or YCoCg-R)
  */
-void
-convertRGBtoYUV(const std::array<unsigned char,3>  &in_rgb, float *out_yuv)
-{
+void convertRGBtoYUV(int type, const std::array<unsigned char, 3> &in_rgb,
+                           float *out_yuv) {
   // color space conversion to YUV
-  out_yuv[0] = float( ( 0.299 * in_rgb[0] + 0.587 * in_rgb[1] + 0.114 * in_rgb[2]) / 255.0 );
-  out_yuv[1] = float( (-0.147 * in_rgb[0] - 0.289 * in_rgb[1] + 0.436 * in_rgb[2]) / 255.0 );
-  out_yuv[2] = float( ( 0.615 * in_rgb[0] - 0.515 * in_rgb[1] - 0.100 * in_rgb[2]) / 255.0 );
-}
 
-/**
-   \brief helper function to convert RGB to YUV, using BT.709 formula
- */
-void
-convertRGBtoYUV_BT709(const std::array<unsigned char,3>  &in_rgb, float *out_yuv)
-{
-  // color space conversion to YUV
-  out_yuv[0] = float( ( 0.2126 * in_rgb[0] + 0.7152 * in_rgb[1] + 0.0722 * in_rgb[2]) / 255.0 );
-  out_yuv[1] = float( (-0.1146 * in_rgb[0] - 0.3854 * in_rgb[1] + 0.5000 * in_rgb[2]) / 255.0 + 0.5000 );
-  out_yuv[2] = float( ( 0.5000 * in_rgb[0] - 0.4542 * in_rgb[1] - 0.0458 * in_rgb[2]) / 255.0 + 0.5000 );
+  if (type == 0)
+  {
+    for (int d = 0; d < 3; d++)
+      out_yuv[d] = float(in_rgb[d]);
+  }
+  else if (type == 8)
+  {
+    int g = in_rgb[1];
+    int b = in_rgb[2];
+    int r = in_rgb[0];
+
+    int co = r - b;
+    int t = b + (co >> 1);
+    int cg = g - t;
+    int y = t + (cg >> 1);
+
+    int offset = 1 << 8;
+
+    out_yuv[0] = y;
+    out_yuv[1] = co + offset;
+    out_yuv[2] = cg + offset;
+  }
+  else // type 1
+  {
+    out_yuv[0] = float((0.2126 * in_rgb[0] + 0.7152 * in_rgb[1] + 0.0722 * in_rgb[2]) / 255.0);
+    out_yuv[1] = float((-0.1146 * in_rgb[0] - 0.3854 * in_rgb[1] + 0.5000 * in_rgb[2]) / 255.0 + 0.5000);
+    out_yuv[2] = float((0.5000 * in_rgb[0] - 0.4542 * in_rgb[1] - 0.0458 * in_rgb[2]) / 255.0 + 0.5000);
+  }
 }
 
 /**!
@@ -450,8 +463,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     {
       float out[3];
       float in[3];
-
-      convertRGBtoYUV_BT709(cloudA.rgb.c[i], in);
+      convertRGBtoYUV(cPar.mseSpace, cloudA.rgb.c[i], in);
 
       if (cPar.neighborsProc)
       {
@@ -511,14 +523,15 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
           }
           break;
         }
-        convertRGBtoYUV_BT709(color, out);
+
+        convertRGBtoYUV(cPar.mseSpace, color, out);
         distColorRGB[0] = (cloudA.rgb.c[i][0] - color[0]) * (cloudA.rgb.c[i][0] - color[0]);
         distColorRGB[1] = (cloudA.rgb.c[i][1] - color[1]) * (cloudA.rgb.c[i][1] - color[1]);
         distColorRGB[2] = (cloudA.rgb.c[i][2] - color[2]) * (cloudA.rgb.c[i][2] - color[2]);
       }
       else
       {
-        convertRGBtoYUV_BT709(cloudB.rgb.c[j], out);
+        convertRGBtoYUV(cPar.mseSpace, cloudB.rgb.c[j], out);
         distColorRGB[0] = (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]) * (cloudA.rgb.c[i][0] - cloudB.rgb.c[j][0]);
         distColorRGB[1] = (cloudA.rgb.c[i][1] - cloudB.rgb.c[j][1]) * (cloudA.rgb.c[i][1] - cloudB.rgb.c[j][1]);
         distColorRGB[2] = (cloudA.rgb.c[i][2] - cloudB.rgb.c[j][2]) * (cloudA.rgb.c[i][2] - cloudB.rgb.c[j][2]);
@@ -595,9 +608,24 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     metric.color_mse[1] = float( sse_color[1] / num );
     metric.color_mse[2] = float( sse_color[2] / num );
 
-    metric.color_psnr[0] = getPSNR( metric.color_mse[0], 1.0 );
-    metric.color_psnr[1] = getPSNR( metric.color_mse[1], 1.0 );
-    metric.color_psnr[2] = getPSNR( metric.color_mse[2], 1.0 );
+    if (cPar.mseSpace == 1) //YCbCr
+    {
+      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 1.0);
+      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 1.0);
+      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 1.0);
+    }
+    else if (cPar.mseSpace == 0) //RGB
+    {
+      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
+      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 255);
+      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 255);
+    }
+    else if (cPar.mseSpace == 8) // YCoCg-R
+    {
+      metric.color_psnr[0] = getPSNR(metric.color_mse[0], 255);
+      metric.color_psnr[1] = getPSNR(metric.color_mse[1], 511);
+      metric.color_psnr[2] = getPSNR(metric.color_mse[2], 511);
+    }
 
     metric.color_rgb_hausdorff[0] = float( max_colorRGB[0] );
     metric.color_rgb_hausdorff[1] = float( max_colorRGB[1] );

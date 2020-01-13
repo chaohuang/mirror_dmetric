@@ -34,6 +34,8 @@ The next table presents the software options.
                            &     & distance                                             \\ \hline
         --averageNormals=1 & 1   & 0(undefined), 1(average normal based on neighbors    \\ 
                            &     & with same geometric distance)                        \\ \hline
+        --mseSpace=1       & 1   & colour space used for mse calculation                \\
+                           &     & 0(identity), 1(Rec. ITU-R BT.709), 8(YCgCo-R)        \\ \hline
         --nbThreads=1      & 1   & Number of threads used for parallel processin        \\ \hline
 \end{longtable}
 

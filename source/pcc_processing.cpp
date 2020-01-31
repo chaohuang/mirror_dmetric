@@ -441,7 +441,7 @@ PccPointCloud::checkFile(string fileName)
  *  Dong Tian <tian@merl.com>
  */
 int
-PccPointCloud::checkField(string fileName, string fieldName, string fieldType1, string fieldType2, string fieldType3, string fieldType4)
+PccPointCloud::checkField(string fileName, string fieldName, const std::initializer_list<const char*>& fieldTypes)
 {
   ifstream in;
   string line;
@@ -479,7 +479,7 @@ PccPointCloud::checkField(string fileName, string fieldName, string fieldType1, 
       else if ( str[0] == "property" && secIdx == 1 && str[1] != "list" )
       {
         iPos++;
-        if ( str[1] == fieldType1 || str[1] == fieldType2 || str[1] == fieldType3 || str[1] == fieldType4 )
+        if ( std::find(fieldTypes.begin(), fieldTypes.end(), str[1]) != fieldTypes.end() )
         {
           if ( str[2] == fieldName )
           {
@@ -687,18 +687,18 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
     return -1;
 
   // Make sure (x,y,z) available and determine the float type
-  iPos[0] = checkField( inFile, "x", "float", "float32", "float64", "double" );
-  iPos[1] = checkField( inFile, "y", "float", "float32", "float64", "double" );
-  iPos[2] = checkField( inFile, "z", "float", "float32", "float64", "double" );
+  iPos[0] = checkField( inFile, "x", {"float", "float32", "float64", "double"} );
+  iPos[1] = checkField( inFile, "y", {"float", "float32", "float64", "double"} );
+  iPos[2] = checkField( inFile, "z", {"float", "float32", "float64", "double"} );
   if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
     return -1;
   xyz.init(size, iPos[0], iPos[1], iPos[2]);
   bXyz = true;
 
   // Optional normals (nx,ny,nz)
-  iPos[0] = checkField( inFile, "nx", "float", "float32", "float64", "double" );
-  iPos[1] = checkField( inFile, "ny", "float", "float32", "float64", "double" );
-  iPos[2] = checkField( inFile, "nz", "float", "float32", "float64", "double" );
+  iPos[0] = checkField( inFile, "nx", {"float", "float32", "float64", "double"} );
+  iPos[1] = checkField( inFile, "ny", {"float", "float32", "float64", "double"} );
+  iPos[2] = checkField( inFile, "nz", {"float", "float32", "float64", "double"} );
   if ( iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 ) {
     normal.init(size, iPos[0], iPos[1], iPos[2]);
     bNormal = true;
@@ -708,9 +708,9 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
     return -1;
 
   // Make sure (r,g,b) available and determine the float type
-  iPos[0] = checkField( inFile, "red",   "uint8", "uchar" );
-  iPos[1] = checkField( inFile, "green", "uint8", "uchar" );
-  iPos[2] = checkField( inFile, "blue",  "uint8", "uchar" );
+  iPos[0] = checkField( inFile, "red",   {"uint8", "uchar"} );
+  iPos[1] = checkField( inFile, "green", {"uint8", "uchar"} );
+  iPos[2] = checkField( inFile, "blue",  {"uint8", "uchar"} );
   if ( !normalsOnly && iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 )
   {
     rgb.init(size, iPos[0], iPos[1], iPos[2]);
@@ -718,9 +718,9 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
   }
 
   // Make sure (lidar) available and determine the integer type
-  iPos[0] = checkField( inFile, "reflectance", "uint16", "uint8" );
+  iPos[0] = checkField( inFile, "reflectance", {"uint16", "uint8"} );
   if ( !normalsOnly && iPos[0] < 0 )
-    iPos[0] = checkField( inFile, "refc", "uint16", "uint8" );
+    iPos[0] = checkField( inFile, "refc", {"uint16", "uint8"} );
 
   if ( iPos[0] >= 0 )
   {

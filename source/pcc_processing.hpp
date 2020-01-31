@@ -42,6 +42,7 @@
 #define PCC_PROCESSING_HPP
 
 #include <array>
+#include <initializer_list>
 #include <iostream>
 #include <fstream>
 #include <memory>
@@ -223,7 +224,7 @@ namespace pcc_processing {
     std::unique_ptr<unsigned char[]> lineMem;
 
     int checkFile( string fileName );
-    int checkField( string fileName, string fieldName, string fieldType1, string fieldType2 = "None", string fieldType3 = "None", string fieldType4 = "None" );
+    int checkField( string fileName, string fieldName, const std::initializer_list<const char*>& fieldTypes );
     int loadLine( ifstream &in );
 #if _WIN32
     int seekBinary(ifstream &in);

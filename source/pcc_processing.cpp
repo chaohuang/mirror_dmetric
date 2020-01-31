@@ -128,6 +128,16 @@ PointXYZSet::loadPoints( PccPointCloud *pPcc, long int idx )
     for (int i = 0; i < 3; i++)
       p[idx][i] = *(double*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
   }
+  else if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::INT32 )
+  {
+    for (int i = 0; i < 3; i++)
+      p[idx][i] = *(int32_t*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
+  }
+  else if ( pPcc->fieldType[ idxInLine[0] ] == PccPointCloud::PointFieldTypes::UINT32 )
+  {
+    for (int i = 0; i < 3; i++)
+      p[idx][i] = *(uint32_t*)(pPcc->lineMem.get() + pPcc->fieldPos[ idxInLine[i] ]);
+  }
   else
   {
     cerr << "Error! Wrong xyz data type: " << pPcc->fieldType[ idxInLine[0] ] << endl;
@@ -687,18 +697,18 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
     return -1;
 
   // Make sure (x,y,z) available and determine the float type
-  iPos[0] = checkField( inFile, "x", {"float", "float32", "float64", "double"} );
-  iPos[1] = checkField( inFile, "y", {"float", "float32", "float64", "double"} );
-  iPos[2] = checkField( inFile, "z", {"float", "float32", "float64", "double"} );
+  iPos[0] = checkField( inFile, "x", {"float", "float32", "float64", "double", "int32", "uint32"} );
+  iPos[1] = checkField( inFile, "y", {"float", "float32", "float64", "double", "int32", "uint32"} );
+  iPos[2] = checkField( inFile, "z", {"float", "float32", "float64", "double", "int32", "uint32"} );
   if ( iPos[0] < 0 && iPos[1] < 0 && iPos[2] < 0 )
     return -1;
   xyz.init(size, iPos[0], iPos[1], iPos[2]);
   bXyz = true;
 
   // Optional normals (nx,ny,nz)
-  iPos[0] = checkField( inFile, "nx", {"float", "float32", "float64", "double"} );
-  iPos[1] = checkField( inFile, "ny", {"float", "float32", "float64", "double"} );
-  iPos[2] = checkField( inFile, "nz", {"float", "float32", "float64", "double"} );
+  iPos[0] = checkField( inFile, "nx", {"float", "float32", "float64", "double", "int32", "uint32"} );
+  iPos[1] = checkField( inFile, "ny", {"float", "float32", "float64", "double", "int32", "uint32"} );
+  iPos[2] = checkField( inFile, "nz", {"float", "float32", "float64", "double", "int32", "uint32"} );
   if ( iPos[0] >= 0 && iPos[1] >= 0 && iPos[2] >= 0 ) {
     normal.init(size, iPos[0], iPos[1], iPos[2]);
     bNormal = true;

@@ -533,7 +533,8 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     distReflectance = 0.0;
     if (cPar.bLidar && cloudA.bLidar && cloudB.bLidar)
     {
-      distReflectance = ( cloudA.lidar.reflectance[i] - cloudB.lidar.reflectance[j] ) * ( cloudA.lidar.reflectance[i] - cloudB.lidar.reflectance[j] );
+      double diff = cloudA.lidar.reflectance[i] - cloudB.lidar.reflectance[j];
+      distReflectance = diff * diff;
     }
 
     myMutex.lock();

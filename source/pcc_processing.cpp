@@ -797,7 +797,41 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
 #endif
 
   // sort the point cloud
-  std::sort(this->begin(), this->end());
+  auto &pc = *this;
+  const size_t pointCount = pc.size;
+  std::vector<size_t> indices;
+  indices.resize(pointCount);
+  for (size_t i = 0; i < pointCount; i++)
+    indices[i] = i;
+  std::sort(indices.begin(),
+            indices.end(),
+            [=, &pc](const size_t &a, const size_t &b) -> bool {
+              if( pc.xyz.p[a] == pc.xyz.p[b] ){
+                return a < b;
+              } else {
+                return pc.xyz.p[a] < pc.xyz.p[b];
+              }
+            });
+  if (pc.bXyz) {
+    auto xyz = pc.xyz.p;
+    for (size_t i = 0; i < pointCount; i++)
+      pc.xyz.p[i] = xyz[indices[i]];
+  }
+  if (pc.bRgb) {
+    auto rgb = pc.rgb.c;
+    for (size_t i = 0; i < pointCount; i++)
+      pc.rgb.c[i] = rgb[indices[i]];
+  }
+  if (pc.bNormal) {
+    auto normal = pc.normal.n;
+    for (size_t i = 0; i < pointCount; i++)
+      pc.normal.n[i] = normal[indices[i]];
+  }
+  if (pc.bLidar) {
+    auto lidar = pc.lidar.reflectance;
+    for (size_t i = 0; i < pointCount; i++)
+      pc.lidar.reflectance[i] = lidar[indices[i]];
+  }
 
   // Find runs of identical point positions
   for (auto it_seq = this->begin(); it_seq != this->end(); ) {

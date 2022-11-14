@@ -107,18 +107,24 @@
 	\IfFileExists{logos/iso}{\includegraphics[height=0.74cm]{logos/iso}}{}
 	\IfFileExists{logos/iec}{\includegraphics[height=0.74cm]{logos/iec}}{}
 	\\
-	\textbf{Moving Picture Experts Group (MPEG)}\\[0ex]
-	\textbf{of ITU-T SG16 WP3 and ISO/IEC JTC1/SC29/WG11}
-		\hfill Document: MPEG-\@mpegdocnum\\[0ex]
-	\@mpegmeeting
+
+	{\center\Large\textbf{INTERNATIONAL ORGANIZATION FOR STANDARDIZATION}\\[0ex]}
+	{\center\Large\textbf{ORGANISATION INTERNATIONALE DE NORMALISATION}\\[0ex]}
+	{\center\Large\textbf{ISO/IEC JTC 1/SC 29/WG 7 MPEG CODING FOR 3D GRAPHICS AND HAPTICS}\\[0ex]}
+
+	\vspace{0.5\baselineskip}
+
+	{\hfill\large\textbf{ISO/IEC JTC 1/SC 29/WG 7 \@mpegdocnum}}\\[0ex]
+	{\hfill\large\textbf{\@mpegmeeting}}\\[0ex]
 
 	\vspace{0.5\baselineskip}
 
 	\newcommand{\@strutb}{\rule{0pt}{2.5ex}}
 	\begin{tabular}{lp{0.78\textwidth}}
 	\@strutb \it Title: & \@title \\
-	\@strutb \it Status: & \@mpegdocstatus \\
+	\@strutb \it Source: & \@mpegdocsource \\
 	\@strutb \it Purpose: & \@mpegdocpurpose \\
+	\@strutb \it Status: & \@mpegdocstatus \\
 	\@strutb \it Author(s): & %
 		\setcounter{mpeg@author@column}{0}
 		\let\@and\\

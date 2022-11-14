@@ -48,7 +48,9 @@
 \RequirePackage{datetime}
 \renewcommand{\dateseparator}{-}
 \newdateformat{MPEG@yyyymmdddate}{%
-	\THEYEAR\dateseparator\twodigit{\THEMONTH}\dateseparator\twodigit{\THEDAY}}
+  \THEYEAR\dateseparator\twodigit{\THEMONTH}\dateseparator\twodigit{\THEDAY}}
+ % 2020-06-06}
+
 
 % all pages only have a footer
 \RequirePackage{fancyhdr}
@@ -56,7 +58,7 @@
 \renewcommand{\headrulewidth}{0pt}
 \fancyhead{}
 \cfoot{\thepage}
-\rfoot{Date saved: \MPEG@yyyymmdddate\today}
+% \rfoot{\MPEG@yyyymmdddate\today}
 
 % macros for document metadata
 \RequirePackage[normalem]{ulem}
@@ -125,17 +127,20 @@
 		\begin{tabular}[t]{@{}>{\@NLtoPAR}p{3in}|>{\@NLtoPAR}p{2in}@{}}%
 			\@author
 		\end{tabular}\\
-	\@strutb \it Source: & \@mpegdocsource \\
 	\end{tabular}
 	\end{raggedright}
 
 	% draw a short horizontal line to delimit the title from body
 	{\center\rule{0.35\textwidth}{1pt}\\}
+
+	\vspace{0.5\baselineskip}
+	{\center\Large\textbf{\@title}\\[0ex]}
+	\vspace{0.5\baselineskip}
 }
 
 %
 \RequirePackage{parskip}
 \RequirePackage[compact]{titlesec}
-\titlespacing{\section}{0pt}{*0}{*0}
-\titlespacing{\subsection}{0pt}{*0}{*0}
-\titlespacing{\subsubsection}{0pt}{*0}{*0}
+\titlespacing{\section}{0pt}{10pt}{10pt}
+\titlespacing{\subsection}{0pt}{10pt}{10pt}
+\titlespacing{\subsubsection}{0pt}{10pt}{10pt}

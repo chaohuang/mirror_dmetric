@@ -3,6 +3,7 @@ all: mpeg-pcc-dmetric-sw-manual.pdf
 
 MD_SRC=\
 	README.about.md \
+	README.clone.md \
 	README.build.md \
 	README.options.md \
 	README.usage.md \

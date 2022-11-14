@@ -1,5 +1,4 @@
-General Information
-===================
+# General Information
 
 Reference software is being made available to provide a reference
 implementation of the MPEG 3DG G-PCC and V-PCC standard being developed 
@@ -17,8 +16,8 @@ improvements are welcome. Such suggestions and general inquiries may be
 sent to the general MPEG 3DGC email reflector at
 <mpeg-3dgc@gti.ssr.upm.es> (registration required).
 
-Bug reporting
--------------
+## Bug reporting
+
 Bugs should be reported on the issue tracker set up at
 <http://mpegx.int-evry.fr/software/MPEG/PCC/mpeg-pcc-dmetric/issues>.
 

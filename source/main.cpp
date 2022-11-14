@@ -71,23 +71,6 @@ void printUsage( //int ac, char * av[],
   cout << "          --color=1 \\" << endl;
   cout << "          --resolution=1023 " << endl;
   cout << endl;
-
-
-  cout << "  #####################################################################" << endl;
-  cout << "  #                                                                   #" << endl;
-  cout << "  #  The parsing options process have been updated to uniformize      #" << endl;
-  cout << "  #  the PCC softwares and use: dependencies/program-options-lite.    #" << endl;
-  cout << "  #  This library defined a parsing process a little different than   #" << endl;
-  cout << "  #  the Boost library, previously used.                              #" << endl;
-  cout << "  #                                                                   #" << endl;
-  cout << "  #  The command line options must be updated and:                    #" << endl;
-  cout << "  #    * the short options without parameters must be                 #" << endl;
-  cout << "  #      updated and now take an argument: ( \"-c\" => \"-c 1\")          #" << endl;
-  cout << "  #    * the long options are required to use the \"--option=value\"    #" << endl;
-  cout << "  #      form, rather than the previous \"--option value\" form.        #" << endl;
-  cout << "  #                                                                   #" << endl;
-  cout << "  #####################################################################" << endl;
-
 }
 
 int parseCommand( int ac, char * av[], commandPar &cPar )

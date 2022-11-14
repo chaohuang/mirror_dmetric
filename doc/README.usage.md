@@ -1,8 +1,6 @@
-Using the mpeg-pcc-dmetric
-===============
+# Using the mpeg-pcc-dmetric
 
-Usage
----------------
+## Usage
 
 ```console
 ./test/pc_error  [--help] [-c config.cfg] [--parameter=value]
@@ -13,8 +11,7 @@ and compute the distance between A and B accordring the normal stored in N.
 
 The outputs are writing in the terminal as trace and can be catch in log files. 
 
-Examples
----------------
+## Examples
 
 ```console
 ./test/pc_error --help

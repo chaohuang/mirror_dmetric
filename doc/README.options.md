@@ -1,5 +1,4 @@
-General options
----------------
+# General options
 
 The parsing options process have been updated to uniformize the PCC softwares and used: dependencies/program-options-lite. 
 This library defined a parsing process different than the Boost library, previously used 

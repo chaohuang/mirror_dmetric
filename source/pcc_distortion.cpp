@@ -159,7 +159,7 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
 float
 getPSNR(float dist2, float p, float factor = 1.0)
 {
-  float max_energy = p * p;
+  auto max_energy = double(p) * p;
   float psnr = 10 * log10( (factor * max_energy) / dist2 );
 
   return psnr;

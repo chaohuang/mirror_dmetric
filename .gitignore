@@ -1,6 +1,6 @@
 bin/*
-build/*
-lib/*
+build/
+build_*/
 doc/html
 doc/latex
 CMakeCache.txt
@@ -9,8 +9,6 @@ cmake_install.cmake
 .project
 .cproject
 Makefile
-test/pc_error
-test/pc_error.exe
 
 
 # Created files

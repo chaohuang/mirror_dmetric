@@ -170,6 +170,9 @@ int main (int argc, char *argv[])
   // Print the version information
   cout << "PCC quality measurement software, version " << PCC_QUALITY_VERSION << endl << endl;
 
+  // this is mandatory to print floats with full precision
+  std::cout.precision(std::numeric_limits<float>::max_digits10);
+  
   commandPar cPar;
   if ( parseCommand( argc, argv, cPar ) == 0 ) {
     return 0;

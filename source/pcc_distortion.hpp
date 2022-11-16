@@ -101,30 +101,30 @@ namespace pcc_quality {
 
   public:
     // point-2-point ( cloud 2 cloud ), benchmark metric
-    float c2c_mse;            //! store symm mse metric
-    float c2c_hausdorff;      //! store symm haussdorf
-    float c2c_psnr;
-    float c2c_hausdorff_psnr; //! store symm haussdorf
+    double c2c_mse;            //! store symm mse metric
+    double c2c_hausdorff;      //! store symm haussdorf
+    double c2c_psnr;
+    double c2c_hausdorff_psnr; //! store symm haussdorf
 
-    float color_mse[3];       //! color components, root mean square
-    float color_psnr[3];      //! psnr
-    float color_rgb_hausdorff[3]; //! color components, hausdorff
-    float color_rgb_hausdorff_psnr[3]; //! psnr hausdorff
+    double color_mse[3];       //! color components, root mean square
+    double color_psnr[3];      //! psnr
+    double color_rgb_hausdorff[3]; //! color components, hausdorff
+    double color_rgb_hausdorff_psnr[3]; //! psnr hausdorff
 
     // point-2-plane ( cloud 2 plane ), proposed metric
-    float c2p_mse;            //! store symm mse metric
-    float c2p_hausdorff;      //! store symm haussdorf
-    float c2p_psnr;
-    float c2p_hausdorff_psnr; //! store symm haussdorf
+    double c2p_mse;            //! store symm mse metric
+    double c2p_hausdorff;      //! store symm haussdorf
+    double c2p_psnr;
+    double c2p_hausdorff_psnr; //! store symm haussdorf
 
     // point 2 plane ( cloud 2 plane ), proposed metric
-    float pPSNR; //! Peak value for PSNR computation. Intrinsic resolution
+    double pPSNR; //! Peak value for PSNR computation. Intrinsic resolution
 
     // reflectance
-    float reflectance_mse;
-    float reflectance_psnr;
-    float reflectance_hausdorff;
-    float reflectance_hausdorff_psnr;
+    double reflectance_mse;
+    double reflectance_psnr;
+    double reflectance_hausdorff;
+    double reflectance_hausdorff_psnr;
 
     qMetric();
   };

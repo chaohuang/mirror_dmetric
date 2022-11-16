@@ -156,11 +156,11 @@ findNNdistances(PccPointCloud &cloudA, double &minDist, double &maxDist)
  * \author
  *   Dong Tian, MERL
  */
-float
-getPSNR(float dist2, float p, float factor = 1.0)
+double
+getPSNR(double dist2, double p, double factor = 1.0)
 {
   auto max_energy = double(p) * p;
-  float psnr = 10 * log10( (factor * max_energy) / dist2 );
+  double psnr = 10 * log10( (factor * max_energy) / dist2 );
 
   return psnr;
 }
@@ -591,10 +591,10 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
   cout << " DEBUG: " << NbNeighborsDst[1] << " points (" << (float)NbNeighborsDst[1] * 100.0 / cloudA.size << "%) found with at least 2 neighbors at the same minimum distance" << endl;
 #endif
 
-  metric.c2p_mse = float( sse_dist_b_c2p / num );
-  metric.c2c_mse = float( sse_dist_b_c2c / num );
-  metric.c2p_hausdorff = float( max_dist_b_c2p );
-  metric.c2c_hausdorff = float( max_dist_b_c2c );
+  metric.c2p_mse = sse_dist_b_c2p / num;
+  metric.c2c_mse = sse_dist_b_c2c / num;
+  metric.c2p_hausdorff = max_dist_b_c2p;
+  metric.c2c_hausdorff = max_dist_b_c2c;
 
   // from distance to PSNR. cloudA always the original
   metric.c2c_psnr = getPSNR( metric.c2c_mse, metric.pPSNR, 3 );
@@ -604,9 +604,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   if (cPar.bColor)
   {
-    metric.color_mse[0] = float( sse_color[0] / num );
-    metric.color_mse[1] = float( sse_color[1] / num );
-    metric.color_mse[2] = float( sse_color[2] / num );
+    metric.color_mse[0] = sse_color[0] / num;
+    metric.color_mse[1] = sse_color[1] / num;
+    metric.color_mse[2] = sse_color[2] / num;
 
     if (cPar.mseSpace == 1) //YCbCr
     {
@@ -627,9 +627,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
       metric.color_psnr[2] = getPSNR(metric.color_mse[2], 511);
     }
 
-    metric.color_rgb_hausdorff[0] = float( max_colorRGB[0] );
-    metric.color_rgb_hausdorff[1] = float( max_colorRGB[1] );
-    metric.color_rgb_hausdorff[2] = float( max_colorRGB[2] );
+    metric.color_rgb_hausdorff[0] = max_colorRGB[0];
+    metric.color_rgb_hausdorff[1] = max_colorRGB[1];
+    metric.color_rgb_hausdorff[2] = max_colorRGB[2];
 
     metric.color_rgb_hausdorff_psnr[0] = getPSNR( metric.color_rgb_hausdorff[0], 255.0 );
     metric.color_rgb_hausdorff_psnr[1] = getPSNR( metric.color_rgb_hausdorff[1], 255.0 );
@@ -638,9 +638,9 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
 
   if (cPar.bLidar)
   {
-    metric.reflectance_mse = float( sse_reflectance / num );
-    metric.reflectance_psnr = getPSNR( float( metric.reflectance_mse ), float( std::numeric_limits<unsigned short>::max() ) );
-    metric.reflectance_hausdorff = float( max_reflectance );
+    metric.reflectance_mse = sse_reflectance / num;
+    metric.reflectance_psnr = getPSNR( metric.reflectance_mse, std::numeric_limits<unsigned short>::max() );
+    metric.reflectance_hausdorff = max_reflectance;
     metric.reflectance_hausdorff_psnr = getPSNR(metric.reflectance_hausdorff, std::numeric_limits<unsigned short>::max() );
   }
 
@@ -724,7 +724,7 @@ qMetric::qMetric()
 void
 pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, commandPar &cPar, qMetric &qual_metric)
 {
-  float pPSNR;
+  double pPSNR;
 
   if (cPar.resolution != 0.0)
   {
@@ -736,7 +736,7 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     double minDist;
     double maxDist;
     findNNdistances(cloudA, minDist, maxDist);
-    pPSNR = float( maxDist );
+    pPSNR =  maxDist;
     cout << "Minimum and maximum NN distances (intrinsic resolutions): " << minDist << ", " << maxDist << endl;
   }
 

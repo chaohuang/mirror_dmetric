@@ -722,13 +722,19 @@ qMetric::qMetric()
  *   Dong Tian, MERL
  */
 void
-pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, commandPar &cPar, qMetric &qual_metric)
+pcc_quality::computeQualityMetric(PccPointCloud &cloudA,
+                                  PccPointCloud &cloudNormalsA,
+                                  PccPointCloud &cloudB,
+                                  commandPar &cPar,
+                                  qMetric &qual_metric,
+                                  const bool verbose )
 {
   double pPSNR;
 
   if (cPar.resolution != 0.0)
   {
-    cout << "Imported intrinsic resoluiton: " << cPar.resolution << endl;
+    if( verbose )
+      cout << "Imported intrinsic resoluiton: " << cPar.resolution << endl;
     pPSNR = cPar.resolution;
   }
   else                          // Compute the peak value on the fly
@@ -737,10 +743,13 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     double maxDist;
     findNNdistances(cloudA, minDist, maxDist);
     pPSNR =  maxDist;
-    cout << "Minimum and maximum NN distances (intrinsic resolutions): " << minDist << ", " << maxDist << endl;
+
+    if( verbose )
+      cout << "Minimum and maximum NN distances (intrinsic resolutions): " << minDist << ", " << maxDist << endl;
   }
 
-  cout << "Peak distance for PSNR: " << pPSNR << endl;
+  if( verbose )
+    cout << "Peak distance for PSNR: " << pPSNR << endl;
   qual_metric.pPSNR = pPSNR;
 
   if (cPar.file2 != "")
@@ -749,7 +758,9 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
     size_t orgSize = cloudA.size;
     size_t newSize = cloudB.size;
     float ratio = float(1.0) * newSize / orgSize;
-    cout << "Point cloud sizes for org version, dec version, and the scaling ratio: " << orgSize << ", " << newSize << ", " << ratio << endl;
+
+    if( verbose )
+      cout << "Point cloud sizes for org version, dec version, and the scaling ratio: " << orgSize << ", " << newSize << ", " << ratio << endl;
   }
 
   if (cPar.file2 == "" ) // If no file2 provided, return just after checking the NN
@@ -759,18 +770,23 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
   PccPointCloud cloudNormalsB;
   if (!cPar.c2c_only)
     scaleNormals( cloudNormalsA, cloudB, cloudNormalsB, cPar.bAverageNormals );
-  cout << "Normals prepared." << endl;
-  cout << endl;
+
+  if( verbose ){
+    cout << "Normals prepared." << endl;
+    cout << endl;
+  }
 
   if (cPar.bColor && (!cloudA.bRgb || !cloudB.bRgb))
   {
-    cout << "WARNING: no color properties in input files, disabling color metrics.\n";
+    if( verbose )
+      cout << "WARNING: no color properties in input files, disabling color metrics.\n";
     cPar.bColor = false;
   }
 
   if (cPar.bLidar && (!cloudA.bLidar || !cloudB.bLidar))
   {
-    cout << "WARNING: no reflectance property in input files, disabling reflectance metrics.\n";
+    if( verbose )
+      cout << "WARNING: no reflectance property in input files, disabling reflectance metrics.\n";
     cPar.bLidar = false;
   }
 
@@ -780,110 +796,113 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
   }
 
   // Use "a" as reference
-  cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";
   qMetric metricA;
   metricA.pPSNR = pPSNR;
   findMetric( cloudA, cloudB, cPar, cloudNormalsB, metricA );
 
-  cout << "   mse1      (p2point): " << metricA.c2c_mse << endl;
-  cout << "   mse1,PSNR (p2point): " << metricA.c2c_psnr << endl;
-  if (!cPar.c2c_only)
-  {
-    cout << "   mse1      (p2plane): " << metricA.c2p_mse << endl;
-    cout << "   mse1,PSNR (p2plane): " << metricA.c2p_psnr << endl;
-  }
-  if ( cPar.hausdorff )
-  {
-    cout << "   h.       1(p2point): " << metricA.c2c_hausdorff << endl;
-    cout << "   h.,PSNR  1(p2point): " << metricA.c2c_hausdorff_psnr << endl;
+  if( verbose ) {
+    cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";
+    cout << "   mse1      (p2point): " << metricA.c2c_mse << endl;
+    cout << "   mse1,PSNR (p2point): " << metricA.c2c_psnr << endl;
     if (!cPar.c2c_only)
     {
-      cout << "   h.       1(p2plane): " << metricA.c2p_hausdorff << endl;
-      cout << "   h.,PSNR  1(p2plane): " << metricA.c2p_hausdorff_psnr << endl;
+      cout << "   mse1      (p2plane): " << metricA.c2p_mse << endl;
+      cout << "   mse1,PSNR (p2plane): " << metricA.c2p_psnr << endl;
     }
-  }
-  if ( cPar.bColor )
-  {
-    cout << "   c[0],    1         : " << metricA.color_mse[0] << endl;
-    cout << "   c[1],    1         : " << metricA.color_mse[1] << endl;
-    cout << "   c[2],    1         : " << metricA.color_mse[2] << endl;
-    cout << "   c[0],PSNR1         : " << metricA.color_psnr[0] << endl;
-    cout << "   c[1],PSNR1         : " << metricA.color_psnr[1] << endl;
-    cout << "   c[2],PSNR1         : " << metricA.color_psnr[2] << endl;
     if ( cPar.hausdorff )
     {
-      cout << " h.c[0],    1         : " << metricA.color_rgb_hausdorff[0] << endl;
-      cout << " h.c[1],    1         : " << metricA.color_rgb_hausdorff[1] << endl;
-      cout << " h.c[2],    1         : " << metricA.color_rgb_hausdorff[2] << endl;
-      cout << " h.c[0],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[0] << endl;
-      cout << " h.c[1],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[1] << endl;
-      cout << " h.c[2],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[2] << endl;
+      cout << "   h.       1(p2point): " << metricA.c2c_hausdorff << endl;
+      cout << "   h.,PSNR  1(p2point): " << metricA.c2c_hausdorff_psnr << endl;
+      if (!cPar.c2c_only)
+      {
+        cout << "   h.       1(p2plane): " << metricA.c2p_hausdorff << endl;
+        cout << "   h.,PSNR  1(p2plane): " << metricA.c2p_hausdorff_psnr << endl;
+      }
     }
-  }
-  if ( cPar.bLidar )
-  {
-    cout << "   r,       1         : " << metricA.reflectance_mse  << endl;
-    cout << "   r,PSNR   1         : " << metricA.reflectance_psnr << endl;
-    if ( cPar.hausdorff )
+    if ( cPar.bColor )
     {
-      cout << " h.r,       1         : " << metricA.reflectance_hausdorff  << endl;
-      cout << " h.r,PSNR   1         : " << metricA.reflectance_hausdorff_psnr << endl;
+      cout << "   c[0],    1         : " << metricA.color_mse[0] << endl;
+      cout << "   c[1],    1         : " << metricA.color_mse[1] << endl;
+      cout << "   c[2],    1         : " << metricA.color_mse[2] << endl;
+      cout << "   c[0],PSNR1         : " << metricA.color_psnr[0] << endl;
+      cout << "   c[1],PSNR1         : " << metricA.color_psnr[1] << endl;
+      cout << "   c[2],PSNR1         : " << metricA.color_psnr[2] << endl;
+      if ( cPar.hausdorff )
+      {
+        cout << " h.c[0],    1         : " << metricA.color_rgb_hausdorff[0] << endl;
+        cout << " h.c[1],    1         : " << metricA.color_rgb_hausdorff[1] << endl;
+        cout << " h.c[2],    1         : " << metricA.color_rgb_hausdorff[2] << endl;
+        cout << " h.c[0],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[0] << endl;
+        cout << " h.c[1],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[1] << endl;
+        cout << " h.c[2],PSNR1         : " << metricA.color_rgb_hausdorff_psnr[2] << endl;
+      }
+    }
+    if ( cPar.bLidar )
+    {
+      cout << "   r,       1         : " << metricA.reflectance_mse  << endl;
+      cout << "   r,PSNR   1         : " << metricA.reflectance_psnr << endl;
+      if ( cPar.hausdorff )
+      {
+        cout << " h.r,       1         : " << metricA.reflectance_hausdorff  << endl;
+        cout << " h.r,PSNR   1         : " << metricA.reflectance_hausdorff_psnr << endl;
+      }
     }
   }
 
   if (!cPar.singlePass)
   {
     // Use "b" as reference
-    cout << "2. Use infile2 (B) as reference, loop over B, use normals on A. (B->A).\n";
     qMetric metricB;
     metricB.pPSNR = pPSNR;
     findMetric( cloudB, cloudA, cPar, cloudNormalsA, metricB );
 
-    cout << "   mse2      (p2point): " << metricB.c2c_mse << endl;
-    cout << "   mse2,PSNR (p2point): " << metricB.c2c_psnr << endl;
-    if (!cPar.c2c_only)
-    {
-      cout << "   mse2      (p2plane): " << metricB.c2p_mse << endl;
-      cout << "   mse2,PSNR (p2plane): " << metricB.c2p_psnr << endl;
-    }
-    if ( cPar.hausdorff )
-    {
-      cout << "   h.       2(p2point): " << metricB.c2c_hausdorff << endl;
-      cout << "   h.,PSNR  2(p2point): " << metricB.c2c_hausdorff_psnr << endl;
+    if( verbose ){
+      cout << "2. Use infile2 (B) as reference, loop over B, use normals on A. (B->A).\n";
+      cout << "   mse2      (p2point): " << metricB.c2c_mse << endl;
+      cout << "   mse2,PSNR (p2point): " << metricB.c2c_psnr << endl;
       if (!cPar.c2c_only)
       {
-        cout << "   h.       2(p2plane): " << metricB.c2p_hausdorff << endl;
-        cout << "   h.,PSNR  2(p2plane): " << metricB.c2p_hausdorff_psnr << endl;
+        cout << "   mse2      (p2plane): " << metricB.c2p_mse << endl;
+        cout << "   mse2,PSNR (p2plane): " << metricB.c2p_psnr << endl;
       }
-    }
-    if ( cPar.bColor)
-    {
-      cout << "   c[0],    2         : " << metricB.color_mse[0] << endl;
-      cout << "   c[1],    2         : " << metricB.color_mse[1] << endl;
-      cout << "   c[2],    2         : " << metricB.color_mse[2] << endl;
-      cout << "   c[0],PSNR2         : " << metricB.color_psnr[0] << endl;
-      cout << "   c[1],PSNR2         : " << metricB.color_psnr[1] << endl;
-      cout << "   c[2],PSNR2         : " << metricB.color_psnr[2] << endl;
-      if ( cPar.hausdorff)
-      {
-        cout << " h.c[0],    2         : " << metricB.color_rgb_hausdorff[0] << endl;
-        cout << " h.c[1],    2         : " << metricB.color_rgb_hausdorff[1] << endl;
-        cout << " h.c[2],    2         : " << metricB.color_rgb_hausdorff[2] << endl;
-        cout << " h.c[0],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[0] << endl;
-        cout << " h.c[1],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[1] << endl;
-        cout << " h.c[2],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[2] << endl;
-      }
-    }
-    if ( cPar.bLidar )
-    {
-      cout << "   r,       2         : " << metricB.reflectance_mse  << endl;
-      cout << "   r,PSNR   2         : " << metricB.reflectance_psnr << endl;
       if ( cPar.hausdorff )
       {
-        cout << " h.r,       2         : " << metricB.reflectance_hausdorff  << endl;
-        cout << " h.r,PSNR   2         : " << metricB.reflectance_hausdorff_psnr << endl;
+        cout << "   h.       2(p2point): " << metricB.c2c_hausdorff << endl;
+        cout << "   h.,PSNR  2(p2point): " << metricB.c2c_hausdorff_psnr << endl;
+        if (!cPar.c2c_only)
+        {
+          cout << "   h.       2(p2plane): " << metricB.c2p_hausdorff << endl;
+          cout << "   h.,PSNR  2(p2plane): " << metricB.c2p_hausdorff_psnr << endl;
+        }
       }
-
+      if ( cPar.bColor)
+      {
+        cout << "   c[0],    2         : " << metricB.color_mse[0] << endl;
+        cout << "   c[1],    2         : " << metricB.color_mse[1] << endl;
+        cout << "   c[2],    2         : " << metricB.color_mse[2] << endl;
+        cout << "   c[0],PSNR2         : " << metricB.color_psnr[0] << endl;
+        cout << "   c[1],PSNR2         : " << metricB.color_psnr[1] << endl;
+        cout << "   c[2],PSNR2         : " << metricB.color_psnr[2] << endl;
+        if ( cPar.hausdorff)
+        {
+          cout << " h.c[0],    2         : " << metricB.color_rgb_hausdorff[0] << endl;
+          cout << " h.c[1],    2         : " << metricB.color_rgb_hausdorff[1] << endl;
+          cout << " h.c[2],    2         : " << metricB.color_rgb_hausdorff[2] << endl;
+          cout << " h.c[0],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[0] << endl;
+          cout << " h.c[1],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[1] << endl;
+          cout << " h.c[2],PSNR2         : " << metricB.color_rgb_hausdorff_psnr[2] << endl;
+        }
+      }
+      if ( cPar.bLidar )
+      {
+        cout << "   r,       2         : " << metricB.reflectance_mse  << endl;
+        cout << "   r,PSNR   2         : " << metricB.reflectance_psnr << endl;
+        if ( cPar.hausdorff )
+        {
+          cout << " h.r,       2         : " << metricB.reflectance_hausdorff  << endl;
+          cout << " h.r,PSNR   2         : " << metricB.reflectance_hausdorff_psnr << endl;
+        }
+      }
     }
 
     // Derive the final symmetric metric
@@ -923,50 +942,52 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA, PccPointCloud &cloudNor
       qual_metric.reflectance_hausdorff_psnr = min( metricA.reflectance_hausdorff_psnr, metricB.reflectance_hausdorff_psnr );
     }
 
-    cout << "3. Final (symmetric).\n";
-    cout << "   mseF      (p2point): " << qual_metric.c2c_mse << endl;
-    cout << "   mseF,PSNR (p2point): " << qual_metric.c2c_psnr << endl;
-    if (!cPar.c2c_only)
-    {
-      cout << "   mseF      (p2plane): " << qual_metric.c2p_mse << endl;
-      cout << "   mseF,PSNR (p2plane): " << qual_metric.c2p_psnr << endl;
-    }
-    if ( cPar.hausdorff )
-    {
-      cout << "   h.        (p2point): " << qual_metric.c2c_hausdorff << endl;
-      cout << "   h.,PSNR   (p2point): " << qual_metric.c2c_hausdorff_psnr << endl;
+    if( verbose ){
+      cout << "3. Final (symmetric).\n";
+      cout << "   mseF      (p2point): " << qual_metric.c2c_mse << endl;
+      cout << "   mseF,PSNR (p2point): " << qual_metric.c2c_psnr << endl;
       if (!cPar.c2c_only)
       {
-        cout << "   h.        (p2plane): " << qual_metric.c2p_hausdorff << endl;
-        cout << "   h.,PSNR   (p2plane): " << qual_metric.c2p_hausdorff_psnr << endl;
+        cout << "   mseF      (p2plane): " << qual_metric.c2p_mse << endl;
+        cout << "   mseF,PSNR (p2plane): " << qual_metric.c2p_psnr << endl;
       }
-    }
-    if ( cPar.bColor )
-    {
-      cout << "   c[0],    F         : " << qual_metric.color_mse[0] << endl;
-      cout << "   c[1],    F         : " << qual_metric.color_mse[1] << endl;
-      cout << "   c[2],    F         : " << qual_metric.color_mse[2] << endl;
-      cout << "   c[0],PSNRF         : " << qual_metric.color_psnr[0] << endl;
-      cout << "   c[1],PSNRF         : " << qual_metric.color_psnr[1] << endl;
-      cout << "   c[2],PSNRF         : " << qual_metric.color_psnr[2] << endl;
       if ( cPar.hausdorff )
       {
-        cout << " h.c[0],    F         : " << qual_metric.color_rgb_hausdorff[0] << endl;
-        cout << " h.c[1],    F         : " << qual_metric.color_rgb_hausdorff[1] << endl;
-        cout << " h.c[2],    F         : " << qual_metric.color_rgb_hausdorff[2] << endl;
-        cout << " h.c[0],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[0] << endl;
-        cout << " h.c[1],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[1] << endl;
-        cout << " h.c[2],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[2] << endl;
+        cout << "   h.        (p2point): " << qual_metric.c2c_hausdorff << endl;
+        cout << "   h.,PSNR   (p2point): " << qual_metric.c2c_hausdorff_psnr << endl;
+        if (!cPar.c2c_only)
+        {
+          cout << "   h.        (p2plane): " << qual_metric.c2p_hausdorff << endl;
+          cout << "   h.,PSNR   (p2plane): " << qual_metric.c2p_hausdorff_psnr << endl;
+        }
       }
-    }
-    if ( cPar.bLidar )
-    {
-      cout << "   r,       F         : " << qual_metric.reflectance_mse  << endl;
-      cout << "   r,PSNR   F         : " << qual_metric.reflectance_psnr << endl;
-      if ( cPar.hausdorff )
+      if ( cPar.bColor )
       {
-        cout << " h.r,       F         : " << qual_metric.reflectance_hausdorff  << endl;
-        cout << " h.r,PSNR   F         : " << qual_metric.reflectance_hausdorff_psnr << endl;
+        cout << "   c[0],    F         : " << qual_metric.color_mse[0] << endl;
+        cout << "   c[1],    F         : " << qual_metric.color_mse[1] << endl;
+        cout << "   c[2],    F         : " << qual_metric.color_mse[2] << endl;
+        cout << "   c[0],PSNRF         : " << qual_metric.color_psnr[0] << endl;
+        cout << "   c[1],PSNRF         : " << qual_metric.color_psnr[1] << endl;
+        cout << "   c[2],PSNRF         : " << qual_metric.color_psnr[2] << endl;
+        if ( cPar.hausdorff )
+        {
+          cout << " h.c[0],    F         : " << qual_metric.color_rgb_hausdorff[0] << endl;
+          cout << " h.c[1],    F         : " << qual_metric.color_rgb_hausdorff[1] << endl;
+          cout << " h.c[2],    F         : " << qual_metric.color_rgb_hausdorff[2] << endl;
+          cout << " h.c[0],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[0] << endl;
+          cout << " h.c[1],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[1] << endl;
+          cout << " h.c[2],PSNRF         : " << qual_metric.color_rgb_hausdorff_psnr[2] << endl;
+        }
+      }
+      if ( cPar.bLidar )
+      {
+        cout << "   r,       F         : " << qual_metric.reflectance_mse  << endl;
+        cout << "   r,PSNR   F         : " << qual_metric.reflectance_psnr << endl;
+        if ( cPar.hausdorff )
+        {
+          cout << " h.r,       F         : " << qual_metric.reflectance_hausdorff  << endl;
+          cout << " h.r,PSNR   F         : " << qual_metric.reflectance_hausdorff_psnr << endl;
+        }
       }
     }
   }

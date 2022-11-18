@@ -136,7 +136,12 @@ namespace pcc_quality {
    *
    *  Dong Tian <tian@merl.com>
    */
-  void computeQualityMetric( PccPointCloud &cloudA, PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, commandPar &cPar, qMetric &qual_metric );
+  void computeQualityMetric( PccPointCloud &cloudA,
+                             PccPointCloud &cloudNormalsA,
+                             PccPointCloud &cloudB,
+                             commandPar &cPar,
+                             qMetric &qual_metric,
+                             const bool verbose = true );
 
 };
 

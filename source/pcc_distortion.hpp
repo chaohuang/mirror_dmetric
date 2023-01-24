@@ -90,6 +90,9 @@ namespace pcc_quality {
     bool   bAverageNormals;   //! 0(undefined), 1(average normal based on neighbors with same geometric distance)
 
     int    nbThreads;         //! Number of threads used for parallel processing.
+
+    bool   normalCalcModificationEnable;    //! Enable modification of the normal calculation for D2.
+
     commandPar();
   };
 

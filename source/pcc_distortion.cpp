@@ -292,6 +292,36 @@ scaleNormals(PccPointCloud &cloudNormalsA, PccPointCloud &cloudB, PccPointCloud 
 #endif
 }
 
+void
+copyNormals(PccPointCloud& sourceNormals, PccPointCloud& destNormals)
+{
+    // Prepare the buffer to compute the average normals
+#if PRINT_TIMING
+    clock_t t1 = clock();
+#endif
+
+    destNormals.size = sourceNormals.size;
+    destNormals.normal.init(sourceNormals.size);
+    vector<int> counts(sourceNormals.size);
+
+    // Copy
+    for (long i = 0; i < destNormals.size; i++)
+    {
+        destNormals.normal.n[i][0] = sourceNormals.normal.n[i][0];
+        destNormals.normal.n[i][1] = sourceNormals.normal.n[i][1];
+        destNormals.normal.n[i][2] = sourceNormals.normal.n[i][2];
+
+    }
+
+    // Set the flag
+    destNormals.bNormal = true;
+
+#if PRINT_TIMING
+    clock_t t2 = clock();
+    cout << "   Converting normal vector DONE. It takes " << (t2 - t1) / CLOCKS_PER_SEC << " seconds (in CPU time)." << endl;
+#endif
+}
+
 /**
    \brief helper function to convert RGB to YUV (BT.709 or YCoCg-R)
  */
@@ -680,6 +710,8 @@ commandPar::commandPar()
   resolution = 0.0;
   dropDuplicates = 0;
   neighborsProc = 0;
+
+  normalCalcModificationEnable = false;
 }
 
 /**!
@@ -770,10 +802,20 @@ void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
   if (cPar.file2 == "" ) // If no file2 provided, return just after checking the NN
     return;
 
-  // Based on normals on original point cloud, derive normals on reconstructed point cloud
   PccPointCloud cloudNormalsB;
-  if (!cPar.c2c_only)
-    scaleNormals( cloudNormalsA, cloudB, cloudNormalsB, cPar.bAverageNormals );
+
+  if (!cPar.c2c_only) {
+      if (cPar.normalCalcModificationEnable && cloudB.bNormal) {
+          //use normal of cloudB
+          printf("Calculate D2 with normal of cloudB.\n");
+          copyNormals(cloudB, cloudNormalsB);
+      }
+      else {
+          // Based on normals on original point cloud, derive normals on reconstructed point cloud
+          printf("Calculate D2 with normal calculated from cloudA.\n");
+          scaleNormals(cloudNormalsA, cloudB, cloudNormalsB, cPar.bAverageNormals);
+      }
+  }
 
   if( verbose ){
     cout << "Normals prepared." << endl;

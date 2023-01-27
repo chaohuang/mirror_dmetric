@@ -352,9 +352,12 @@ void convertRGBtoYUV(int type, const std::array<unsigned char, 3> &in_rgb,
  * \author
  *   Dong Tian, MERL
  */
-void
-findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPointCloud &cloudNormalsB, qMetric &metric)
-{
+void findMetric( PccPointCloud& cloudA,
+                 PccPointCloud& cloudB,
+                 commandPar&    cPar,
+                 PccPointCloud& cloudNormalsB,
+                 qMetric&       metric,
+                 const double   similarPointThreshold ) {
   mutex myMutex;
 
 #if PRINT_TIMING
@@ -404,7 +407,7 @@ findMetric(PccPointCloud &cloudA, PccPointCloud &cloudB, commandPar &cPar, PccPo
     if (cPar.bColor || (!cPar.c2c_only && cloudNormalsB.bNormal) ) {
       sameDistPoints.push_back( indices[0] );
       for (size_t n = 1; n < num_results; n++) {
-        if (fabs(sqrDist[n] - sqrDist[n - 1]) < 1e-8) {
+        if (fabs(sqrDist[n] - sqrDist[n - 1]) < similarPointThreshold ) {
           sameDistPoints.push_back( indices[n] );
         } else {
           break;
@@ -717,18 +720,19 @@ qMetric::qMetric()
  *   @param cloudB: point cloud, decoded/reconstructed version
  *   @param cPar: input parameters
  *   @param qual_metric: quality metric, to be returned
+ *   @param verbose: enable verbose mode
+ *   @param similarPointThreshold: distance threshold below which two points are similar
  *
  * \author
  *   Dong Tian, MERL
  */
-void
-pcc_quality::computeQualityMetric(PccPointCloud &cloudA,
-                                  PccPointCloud &cloudNormalsA,
-                                  PccPointCloud &cloudB,
-                                  commandPar &cPar,
-                                  qMetric &qual_metric,
-                                  const bool verbose )
-{
+void pcc_quality::computeQualityMetric( PccPointCloud& cloudA,
+                                        PccPointCloud& cloudNormalsA,
+                                        PccPointCloud& cloudB,
+                                        commandPar&    cPar,
+                                        qMetric&       qual_metric,
+                                        const bool     verbose,
+                                        const double   similarPointThreshold ) {
   double pPSNR;
 
   if (cPar.resolution != 0.0)
@@ -798,7 +802,7 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA,
   // Use "a" as reference
   qMetric metricA;
   metricA.pPSNR = pPSNR;
-  findMetric( cloudA, cloudB, cPar, cloudNormalsB, metricA );
+  findMetric( cloudA, cloudB, cPar, cloudNormalsB, metricA, similarPointThreshold );
 
   if( verbose ) {
     cout << "1. Use infile1 (A) as reference, loop over A, use normals on B. (A->B).\n";
@@ -854,7 +858,7 @@ pcc_quality::computeQualityMetric(PccPointCloud &cloudA,
     // Use "b" as reference
     qMetric metricB;
     metricB.pPSNR = pPSNR;
-    findMetric( cloudB, cloudA, cPar, cloudNormalsA, metricB );
+    findMetric( cloudB, cloudA, cPar, cloudNormalsA, metricB, similarPointThreshold );
 
     if( verbose ){
       cout << "2. Use infile2 (B) as reference, loop over B, use normals on A. (B->A).\n";

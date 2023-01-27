@@ -140,8 +140,9 @@ namespace pcc_quality {
                              PccPointCloud &cloudNormalsA,
                              PccPointCloud &cloudB,
                              commandPar &cPar,
-                             qMetric &qual_metric,
-                             const bool verbose = true );
+                             qMetric &qual_metric, 
+                             const bool verbose = true,
+                             const double similarPointThreshold = 1e-8 );
 
 };
 

@@ -54,6 +54,8 @@
 
 #if _WIN32
 #define stat64 _stat64
+#elif defined(__APPLE__)
+#define stat64 stat
 #endif
 
 using namespace std;

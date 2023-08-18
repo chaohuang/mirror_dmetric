@@ -879,18 +879,18 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
 
   int duplicatesFound = 0;
   if (dropDuplicates != 0) {
-    auto last = std::unique(this->begin(), this->end());
-    duplicatesFound = std::distance(last, this->end());
+    // auto last = std::unique(this->begin(), this->end());
+    // duplicatesFound = std::distance(last, this->end());
 
-    size -= duplicatesFound;
-    xyz.p.resize(size);
-    xyz.nbdup.resize(size);
-    if (bNormal)
-      normal.n.resize(size);
-    if (bRgb)
-      rgb.c.resize(size);
-    if (bLidar)
-      lidar.reflectance.resize(size);
+    // size -= duplicatesFound;
+    // xyz.p.resize(size);
+    // xyz.nbdup.resize(size);
+    // if (bNormal)
+    //   normal.n.resize(size);
+    // if (bRgb)
+    //   rgb.c.resize(size);
+    // if (bLidar)
+    //   lidar.reflectance.resize(size);
   }
 
   if (duplicatesFound > 0)

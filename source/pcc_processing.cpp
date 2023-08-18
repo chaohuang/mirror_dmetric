@@ -683,8 +683,13 @@ PccPointCloud::load(string inFile, bool normalsOnly, int dropDuplicates, int nei
   if (inFile == "")
     return 0;
 
+#ifdef __APPLE__  // macOS specific code
+  struct stat bufferExist;
+  if (stat(inFile.c_str(), &bufferExist) != 0)
+#else  // Code for other platforms
   struct stat64 bufferExist;
   if (stat64(inFile.c_str(), &bufferExist) != 0)
+#endif
   {
     cout << "File does not exist: " << inFile << endl;
     return -1;
